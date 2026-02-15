@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body_class %}no-right{% endblock %}
+{% block page_title %}Login{% endblock %}
+
+{% block content %}
+<div class="card" style="padding:16px; max-width:420px;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" style="padding:10px 14px; border-radius:999px; border:none; background:#0b0f17; color:#fff; font-weight:700;">
+      Login
+    </button>
+  </form>
+</div>
+{% endblock %}
