@@ -1,5 +1,3 @@
-from django.shortcuts import render
-
 """
 Responsabilidades:
 
@@ -8,3 +6,8 @@ Responsabilidades:
 - Mostrar feed (posts de usuarios seguidos)
 - Dar/quitar like
 """
+
+from django.shortcuts import render
+
+def feed_view(request):
+    return render(request, "social/feed.html")

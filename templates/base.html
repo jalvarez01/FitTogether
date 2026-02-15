@@ -1,80 +1,398 @@
 <!-- Aquí va la base de la interfaz que heredan todos-->
- <!DOCTYPE html>
+{% load static %}
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>FitTogether</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}FitTogether{% endblock %}</title>
 
-    <!-- Basic styling -->
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-        }
+  <!-- Fuente para títulos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
 
-        nav {
-            background-color: #1e1e2f;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  <style>
+    :root{
+      --bg: #f2f3f5;
+      --frame: #ffffff;
+      --card: #ffffff;
 
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin-right: 15px;
-            font-weight: bold;
-        }
+      --text: #111827;
+      --muted: #6b7280;
 
-        nav a:hover {
-            opacity: 0.7;
-        }
+      --border: #e6e8ee;
+      --shadow: 0 16px 40px rgba(15, 23, 42, .08);
 
-        .container {
-            width: 80%;
-            margin: 40px auto;
-        }
+      --black: #0b0f17;
+      --black-2: #0f1522;
 
-        footer {
-            text-align: center;
-            padding: 20px;
-            margin-top: 40px;
-            background-color: #eaeaea;
-        }
-    </style>
+      --radius-xl: 26px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
 
-    {% block extra_css %}{% endblock %}
+      --gap: 26px;
+      --maxw: 1180px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    a{ color: inherit; text-decoration:none; }
+    img{ display:block; }
+
+    .shell{
+      min-height: 100vh;
+      padding: 26px 18px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+
+    /* Marco grande redondeado */
+    .frame{
+      width: min(var(--maxw), 100%);
+      background: var(--frame);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 250px 1fr 300px;
+      gap: var(--gap);
+      align-items:start;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      padding: 12px 10px;
+    }
+
+    .sidebar__profile{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 8px 18px;
+    }
+
+    .avatar{
+      width: 88px;          /* foto del perfil */
+      height: 88px;
+      border-radius: 999px;
+      background: #d1d5db;
+      overflow:hidden;
+      border: 4px solid #fff;
+      box-shadow: none;
+    }
+    .avatar img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .profile-name{
+      font-weight: 700;
+      font-size: 15px;
+      margin-top: 2px;
+      letter-spacing: .4px;
+    }
+    .profile-handle{
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: -6px;
+    }
+
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+      padding: 6px 6px 10px;
+    }
+
+    .nav a{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: none;
+      background: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+
+    .nav a:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(15, 23, 42, .10);
+    }
+
+    /* Activo negro */
+    .nav a.is-active{
+      background: linear-gradient(180deg, var(--black), var(--black-2));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .nav .icon{
+      width: 24px; /* iconos del sidebar */
+      height: 24px;
+      object-fit: contain;
+      transition: transform .15s ease;
+    }
+
+    .icon-feed{
+      transform: scale(0.85);
+    }
+
+    .icon-settings {
+      transform: scale(1.15);
+    }
+
+    .icon-messages {
+      transform: scale(1.12);
+    }
+
+    .icon-friends {
+      transform: scale(0.98);
+    }
+
+    /* Para que el ícono se vea blanco cuando está activo */
+    .nav a.is-active .icon{
+      filter: brightness(0) invert(1);
+    }
+
+    .nav .badge{
+      margin-left:auto;
+      min-width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: #ef4444;
+      color:#fff;
+      font-size: 12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 0 8px;
+    }
+
+    .brand{
+      margin-top: 19px;
+      padding: 12px 10px;
+      font-family: "Lobster";
+      font-weight: 400;
+      font-style: normal;
+      font-size: 24px;
+      letter-spacing: .8px;
+      opacity: .95;
+      text-align: center;
+    }
+
+    /* Main */
+    .main{
+      min-height: 560px;
+    }
+
+    .main__header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      margin: 2px 6px 14px;
+    }
+
+    .title{
+      font-family: "Space Grotesk", Inter, system-ui;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: .2px;
+    }
+
+    .subtle{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .main__actions{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+    }
+
+    /* Cards */
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .05);
+    }
+
+    /* Right panel */
+    .right{
+      position: sticky;
+      top: 18px;
+      align-self:start;
+    }
+
+    .right__top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      padding: 14px 14px 10px;
+    }
+
+    .right__title{
+      font-family: "Space Grotesk", Inter, system-ui;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .right__month{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Hide right col if needed */
+    .no-right .layout{
+      grid-template-columns: 250px 1fr;
+    }
+    .no-right .right{
+      display:none;
+    }
+
+    /* Modal slot */
+    .modal-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.20);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 50;
+    }
+    .modal{
+      width: min(720px, 100%);
+      border-radius: var(--radius-xl);
+      background: #fff;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      .layout{ grid-template-columns: 240px 1fr; }
+      .right{ display:none; }
+    }
+    @media (max-width: 720px){
+      .layout{ grid-template-columns: 1fr; }
+      .sidebar{ order: 2; }
+      .main{ order: 1; }
+      .frame{ padding: 16px; }
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
 </head>
-<body>
 
-    <!-- Navbar -->
-    <nav>
-        <div>
-            <a href="/">FitTogether</a>
-        </div>
+{# Si una página no quiere panel derecho, en su template poner: {% block body_class %}no-right{% endblock %} #}
+<body class="{% block body_class %}{% endblock %}">
+  <div class="shell">
+    <div class="frame">
+      <div class="layout">
 
-        <div>
-            <a href="#">Feed</a>
-            <a href="#">Search</a>
-            <a href="#">Profile</a>
-            <a href="#">Logout</a>
-        </div>
-    </nav>
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+          <div class="sidebar__profile">
+            <div class="avatar">
+              {% if user.is_authenticated and user.profile.profile_picture %}
+                <img src="{{ user.profile.profile_picture.url }}" alt="avatar">
+              {% else %}
+                <img src="{% static 'images/profile_default.jpg' %}" alt="avatar">
+              {% endif %}
+            </div>
 
-    <!-- Main Content -->
-    <div class="container">
-        {% block content %}
-        {% endblock %}
+            <div class="profile-name">{% block sidebar_name %}User{% endblock %}</div>
+            <div class="profile-handle">{% block sidebar_handle %}@user{% endblock %}</div>
+          </div>
+
+          <nav class="nav">
+
+            <a href="{% url 'social:feed' %}" class="{% block nav_feed_active %}{% endblock %}">
+              <img class="icon icon-feed" src="{% static 'icons/feed.png' %}" alt="feed">
+              Feed
+            </a>
+
+            <a href="{% block nav_messages_url %}#{% endblock %}" class="{% block nav_messages_active %}{% endblock %}">
+              <img class="icon icon-messages" src="{% static 'icons/messages.png' %}" alt="messages">
+              Messages
+              {% block nav_messages_badge %}{% endblock %}
+            </a>
+
+            <a href="{% block nav_friends_url %}#{% endblock %}" class="{% block nav_friends_active %}{% endblock %}">
+              <img class="icon icon-friends" src="{% static 'icons/friends.png' %}" alt="friends">
+              Friends
+            </a>
+
+            <a href="{% block nav_settings_url %}#{% endblock %}" class="{% block nav_settings_active %}{% endblock %}">
+              <img class="icon icon-settings" src="{% static 'icons/settings.png' %}" alt="settings">
+              Settings
+            </a>
+          </nav>
+
+          <div class="brand">FitTogether</div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main">
+          <div class="main__header">
+            <div>
+              <div class="title">{% block page_title %}Feeds{% endblock %}</div>
+              {% block page_subtitle %}{% endblock %}
+            </div>
+
+            <div class="main__actions">
+              {% block header_actions %}{% endblock %}
+            </div>
+          </div>
+
+          {% block content %}{% endblock %}
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="right">
+          {% block right_panel %}
+          <div class="card">
+            <div class="right__top">
+              <div class="right__title">Streak</div>
+              <div class="right__month">February</div>
+            </div>
+            <div style="padding: 0 14px 14px; color: var(--muted); font-size: 13px;">
+              (Panel derecho para calendario)
+            </div>
+          </div>
+          {% endblock %}
+        </aside>
+
+      </div>
     </div>
+  </div>
 
-    <!-- Footer -->
-    <footer>
-        © 2026 FitTogether
-    </footer>
+  {# Modal slot para Create Post #}
+  {% block modal %}{% endblock %}
 
-    {% block extra_js %}{% endblock %}
+  {% block extra_js %}{% endblock %}
 </body>
 </html>
