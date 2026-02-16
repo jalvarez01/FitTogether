@@ -88,6 +88,27 @@
       padding: 10px 8px 18px;
     }
 
+    /* Ocultar sidebar en páginas que lo pidan */
+    .no-sidebar .sidebar{ display:none !important; }
+
+    /* Ocultar panel derecho en páginas que lo pidan */
+    .no-right .right{ display:none !important; }
+
+    /* Cuando ocultas sidebar, reajusta el grid */
+    .no-sidebar .layout{
+    grid-template-columns: 1fr 320px !important; /* content + right */
+    }
+
+    /* Cuando ocultas right panel, reajusta */
+    .no-right .layout{
+    grid-template-columns: 260px 1fr !important; /* sidebar + content */
+    }
+
+    /* Cuando ocultas ambos: solo content */
+    .no-sidebar.no-right .layout{
+    grid-template-columns: 1fr !important;
+    }
+
     .avatar{
       width: 88px;          /* foto del perfil */
       height: 88px;
@@ -154,6 +175,8 @@
       object-fit: contain;
       transition: transform .15s ease;
     }
+
+    .profile-link:hover{ opacity:.92; }
 
     .icon-feed{
       transform: scale(0.85);
@@ -342,18 +365,24 @@
 
         <!-- LEFT SIDEBAR -->
         <aside class="sidebar">
-          <div class="sidebar__profile">
+          <a href="{% url 'users:profile' %}" class="sidebar__profile profile-link">
+
             <div class="avatar">
-              {% if user.is_authenticated and user.profile.profile_picture %}
+                {% if user.is_authenticated and user.profile.profile_picture %}
                 <img src="{{ user.profile.profile_picture.url }}" alt="avatar">
-              {% else %}
+                {% else %}
                 <img src="{% static 'images/profile_default.jpg' %}" alt="avatar">
-              {% endif %}
+                {% endif %}
             </div>
 
-            <div class="profile-name">{% block sidebar_name %}User{% endblock %}</div>
-            <div class="profile-handle">{% block sidebar_handle %}@user{% endblock %}</div>
-          </div>
+            <div class="profile-name">
+                {% block sidebar_name %}User{% endblock %}
+            </div>
+
+            <div class="profile-handle">
+                {% block sidebar_handle %}@user{% endblock %}
+            </div>
+          </a>
 
           <nav class="nav">
 

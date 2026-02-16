@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body_class %}no-sidebar no-right{% endblock %}
+{% block nav_profile_active %}{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<style>
+  .profile-page{
+    display:flex;
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  .profile-topbar{
+  display:grid;
+  grid-template-columns: 255px 1fr; /* igual que friends-panel */
+  align-items:center;
+  margin-bottom: 10px;
+}
+
+.top-title{
+  font-weight: 700;
+  font-size: 19.5px;
+  color:#000000;
+}
+
+.top-title.left{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.top-title .count{
+  font-size: 12px;
+  color:#6b7280;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.top-title.center{
+  text-align:center;
+}
+
+  /* Friends mini panel a la izquierda (solo UI) */
+  .friends-panel{
+    width: 255px;
+  }
+  .friends-card{
+    border-radius: 18px;
+    background: #fff;
+    border: none;
+    box-shadow:none;
+    padding: 14px;
+  }
+  .friends-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .friends-count{
+    font-size: 12px;
+    color:#6b7280;
+    font-weight:700;
+  }
+
+  .friends-list{
+    display:flex;
+    flex-direction:column;
+    gap: 18px;
+    max-height: calc(100vh - 260px);
+    overflow-y:auto;
+    padding-right: 6px;
+    scrollbar-width: auto;
+    scrollbar-color: rgba(0,0,0,.22) transparent;
+  }
+
+  .friends-list::-webkit-scrollbar{ width: 10px; }
+  .friends-list::-webkit-scrollbar-track{
+    background: transparent;
+  }
+
+  .friends-list::-webkit-scrollbar-thumb{
+    background: rgba(151, 151, 151, 0.2);
+    border-radius: 999px;
+  }
+    
+  .friends-list::-webkit-scrollbar-thumb:hover{
+    background: rgba(172, 172, 172, 0.28);
+  }
+
+  .friend-row{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    color:#303030;
+    letter-spacing: .3px;
+  }
+  .friend-ava{
+    width: 46px; 
+    height:46px;
+    border-radius:999px;
+    background:#d1d5db;
+  }
+
+  /* Profile main */
+  .profile-main{
+    flex:1;
+    min-width: 520px;
+  }
+
+  .profile-header{
+    background:#efeff1;
+    border-radius: 18px;
+    height: 170px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .edit-pen{
+    position:absolute;
+    right: 16px;
+    top: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: none;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: transform .2s ease, opacity .2s ease;
+  }
+  .edit-pen:hover{ 
+    transform: scale(1.12);
+    opacity: .85;
+  }
+
+  .edit-pen img{
+    width: 21px;
+    height: 21px;
+    object-fit:contain;
+    opacity:.9;
+    transition: transform .2s ease;
+  }
+
+  .profile-meta{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 14px;
+    margin-top: -40px; /* avatar “sale” del header como figma */
+    padding: 0 10px;
+    z-index: 10;
+    position: relative;
+  }
+
+  .meta-left{
+    display:flex;
+    align-items:flex-end;
+    gap: 14px;
+  }
+
+  .big-avatar{
+    width: 92px;
+    height: 92px;
+    border-radius: 999px;
+    background:#d1d5db;
+    border: 6px solid #fff;
+    overflow:hidden;
+    flex: 0 0 auto;
+  }
+  .big-avatar img{ width:100%; height:100%; object-fit:cover; }
+
+  .name-block{
+    padding-bottom: 10px;
+  }
+  .name-block .name{
+    font-weight: 700;
+    font-size: 18px;
+    color: #202020;
+    margin-bottom: 2px;
+  }
+  .name-block .handle{
+    font-size: 13px;
+    color:#6b7280;
+    font-weight:600;
+    letter-spacing: .2px;
+  }
+
+  .meta-actions{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+
+  .btn-pill{
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: none;
+    background: #000000;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: .5px;
+    font-size: 13px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .btn-pill:hover{ 
+    opacity:.92; 
+    box-shadow: 0 6px 18px rgba(5, 5, 5, 0.15);
+  }
+
+  .btn-icon{
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: none;
+    background: #fff;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .btn-icon:hover{ opacity:.92; }
+  .btn-icon img{
+    width: 28px;
+    height: 28px;
+    object-fit:contain;
+    opacity:.9;
+  }
+
+  /* Grid posts (pastel) */
+  .grid{
+    margin-top: 18px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .tile{
+    height: 210px;
+    border-radius: 14px;
+    overflow:hidden;
+    border:none;
+    box-shadow:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 14px;
+  }
+  .tile.blue{ background:#eaf0ff; }
+  .tile.pink{ background:#fde9fb; }
+  .tile.green{ background:#eaf9ee; }
+
+  .tile .ph{
+    width: 44px;
+    height: 44px;
+    object-fit:contain;
+    opacity:.9;
+  }
+
+  .tile .text{
+    font-size: 12px;
+    color:#111827;
+    line-height: 1.35;
+    font-weight: 600;
+    text-align:left;
+    background: rgba(255,255,255,.55);
+    border-radius: 12px;
+    padding: 12px;
+    width: 100%;
+  }
+
+  /* Responsive mini */
+  @media (max-width: 1050px){
+    .friends-panel{ display:none; }
+    .profile-main{ min-width: auto; }
+  }
+</style>
+
+<div class="profile-topbar">
+  <div class="top-title left">Friends <span class="count">6</span></div>
+  <div class="top-title center">Profile</div>
+</div>
+
+<div class="profile-page">
+
+  <!-- Friends panel (UI) -->
+  <aside class="friends-panel">
+    <div class="friends-card">
+
+      <div class="friends-list">
+        <div class="friend-row"><div class="friend-ava"></div><div>User01</div></div>
+        <div class="friend-row"><div class="friend-ava"></div><div>User02</div></div>
+        <div class="friend-row"><div class="friend-ava"></div><div>User03</div></div>
+        <div class="friend-row"><div class="friend-ava"></div><div>User04</div></div>
+        <div class="friend-row"><div class="friend-ava"></div><div>User05</div></div>
+        <div class="friend-row"><div class="friend-ava"></div><div>User06</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Profile main -->
+  <section class="profile-main">
+
+    <div class="profile-header">
+      <button class="edit-pen" type="button" aria-label="Edit header">
+        <img src="{% static 'icons/edit.png' %}" alt="edit">
+      </button>
+    </div>
+
+    <div class="profile-meta">
+      <div class="meta-left">
+        <div class="big-avatar">
+          <img src="{% static 'images/profile_default.jpg' %}" alt="profile">
+        </div>
+
+        <div class="name-block">
+          <div class="name">User</div>
+          <div class="handle">@user</div>
+        </div>
+      </div>
+
+      <div class="meta-actions">
+        <button class="btn-pill" type="button">
+          + Post
+        </button>
+
+        <button class="btn-icon" type="button" aria-label="Filter">
+          <img src="{% static 'icons/filter.png' %}" alt="filter">
+        </button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="tile blue"><img class="ph" src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'"></div>
+      <div class="tile pink"><div class="text">Lorem ipsum dolor sit amet. Ut voluptas rerum aut adipisci molestiae ut delectus eveniet est vitae repellendus non neque ratione…</div></div>
+      <div class="tile green"><img class="ph" src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'"></div>
+    </div>
+
+  </section>
+</div>
+
+{% endblock %}
