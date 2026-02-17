@@ -376,11 +376,19 @@
             </div>
 
             <div class="profile-name">
-                {% block sidebar_name %}User{% endblock %}
+              {% if user.is_authenticated %}
+                {{ user.username }}
+              {% else %}
+                User
+              {% endif %}
             </div>
 
             <div class="profile-handle">
-                {% block sidebar_handle %}@user{% endblock %}
+              {% if user.is_authenticated %}
+                @{{ user.username }}
+              {% else %}
+                @user
+              {% endif %}
             </div>
           </a>
 

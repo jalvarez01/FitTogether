@@ -326,8 +326,21 @@
         </div>
 
         <div class="name-block">
-          <div class="name">User</div>
-          <div class="handle">@user</div>
+          <div class="name">
+            {% if user.is_authenticated %}
+                {{ user.username }}
+            {% else %}
+                User
+            {% endif %}
+          </div>
+
+          <div class="handle">
+            {% if user.is_authenticated %}
+                @{{ user.username }}
+            {% else %}
+                @user
+            {% endif %}
+          </div>
         </div>
       </div>
 

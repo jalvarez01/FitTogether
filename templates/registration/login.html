@@ -1,15 +1,123 @@
 {% extends "base.html" %}
-{% block body_class %}no-right{% endblock %}
-{% block page_title %}Login{% endblock %}
+{% load static %}
+
+{% block page_title %}{% endblock %}
+{% block body_class %}no-sidebar no-right{% endblock %}
 
 {% block content %}
-<div class="card" style="padding:16px; max-width:420px;">
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" style="padding:10px 14px; border-radius:999px; border:none; background:#0b0f17; color:#fff; font-weight:700;">
-      Login
-    </button>
-  </form>
+<style>
+  .auth-wrap{
+    min-height: calc(100vh - 120px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 30px 16px;
+  }
+  .auth-card{
+    width: 520px;
+    max-width: 100%;
+    background:#fff;
+    border-radius: 22px;
+    padding: 28px 28px 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.06);
+    border: 1px solid rgba(17,24,39,.06);
+  }
+  .auth-brand{
+    font-family: "Lobster", cursive;
+    font-size: 28px;
+    text-align:center;
+    margin-bottom: 6px;
+  }
+  .auth-title{
+    text-align:center;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 8px 0 16px;
+  }
+  .field{
+    background:#f6f6f7;
+    border-radius:16px;
+    padding: 12px 14px;
+    border: 1px solid rgba(17,24,39,.06);
+    margin-bottom: 12px;
+  }
+  .field label{
+    display:block;
+    font-size: 12px;
+    font-weight: 790;
+    margin-bottom: 6px;
+  }
+  .field input{
+    width:100%;
+    height:40px;
+    border-radius:12px;
+    border: 1px solid rgba(17,24,39,.10);
+    padding:0 12px;
+  }
+  .field input:focus{
+    outline: none;
+    border-color: #9ea3ad;
+  }
+  .btn-primary{
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border:none;
+    background: #0c0c0c;;
+    font-size: 13.5px;
+    color:#fff;
+    font-weight:550;
+    letter-spacing: .2px;
+    cursor:pointer;
+    width: 100%;
+    transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
+  }
+  .btn-primary:hover{
+    transform: translateY(-1px);
+    opacity:.92;
+    box-shadow: 0 8px 20px rgba(0,0,0,.12);
+  }
+  .mini{
+    margin-top: 12px;
+    text-align:center;
+    font-size: 12px;
+    color:#6b7280;
+  }
+  .error{
+    color:#ef4444;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+</style>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">FitTogether</div>
+    <div class="auth-title">Login</div>
+
+    {% if form.errors %}
+      <div class="error">Invalid username or password.</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="field">
+        {{ form.username.label_tag }}
+        {{ form.username }}
+      </div>
+
+      <div class="field">
+        {{ form.password.label_tag }}
+        {{ form.password }}
+      </div>
+
+      <button class="btn-primary" type="submit">Login</button>
+
+      <div class="mini">
+        Don’t have an account? <a href="{% url 'users:register' %}">Create one</a>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}
