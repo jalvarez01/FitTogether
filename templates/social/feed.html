@@ -1,16 +1,55 @@
 
+<!-- Aquí va el feed principal -->
 {% extends "base.html" %}
+<h1 style="color: red; font-size: 40px;">MI CÓDIGO ESTÁ VIVO</h1>
 {% load static %}
 
 {% block nav_feed_active %}is-active{% endblock %}
-{% block page_title %}Feed{% endblock %}
+{% block page_title %}Feeds{% endblock %}
 
 {% block content %}
 <style>
-  .feed-wrap{
-    display:flex;
-    flex-direction:column;
-    gap: 16px;
+  .feed-wrap{ 
+    display:flex; 
+    flex-direction:column; 
+    gap: 16px; 
+  }
+
+  /* Barra de búsqueda */
+  .search-bar {
+    background: #f9fafb;
+    border-radius: 18px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  
+  .search-bar form {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .search-bar input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .search-bar button {
+    background: #030303;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  
+  .search-bar button:hover {
+    opacity: 0.92;
   }
 
   /* Post pastel cards */
@@ -39,20 +78,38 @@
     background: #d1d5db;
     overflow:hidden;
     flex: 0 0 auto;
+  }
+  .post-avatar a{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .post-avatar img{ 
+    width:100%; 
+    height:100%; 
+    object-fit:cover; 
     cursor: pointer;
   }
-  .post-avatar img{ width:100%; height:100%; object-fit:cover; }
 
-  .post-meta{ display:flex; flex-direction:column; line-height:1.1; }
+  .post-meta{ 
+    display:flex; 
+    flex-direction:column; 
+    line-height:1.1; 
+  }
   .post-meta .name{ 
     font-weight:700; 
-    font-size:14px; 
-    cursor: pointer;
+    font-size:14px;
     color: #111827;
     text-decoration: none;
   }
-  .post-meta .name:hover{ text-decoration: underline; }
-  .post-meta .time{ font-size:12px; color:#6b7280; margin-top: 4px; }
+  .post-meta .name:hover{
+    opacity: 0.7;
+  }
+  .post-meta .time{ 
+    font-size:12px; 
+    color:#6b7280; 
+    margin-top: 4px; 
+  }
 
   .post-text{
     margin: 10px 0 14px;
@@ -60,7 +117,7 @@
     color:#111827;
   }
 
-  /* Images row */
+  /* Images row like Figma (two light rectangles) */
   .images-row{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -82,6 +139,7 @@
     object-fit: cover;
     display:block;
   }
+  /* para icono image.png */
   .img-ph .ph-icon{
     width: 28px;
     height: 28px;
@@ -126,16 +184,18 @@
     color: #9ca3af;
   }
   
-  .stat.likes.active {
+  .stat.likes.active{
     color: #fb7185;
   }
   
   .stat.likes.active img{
     opacity: 1;
-    filter: brightness(1.2);
+    filter: brightness(1.1);
   }
 
   .stat.comments{ gap: 5px; }
+
+  /* Ajuste específico para comment */
   .stat.comments img{
     width: 23px;
     height: 23px;
@@ -144,53 +204,104 @@
     transform: translateY(2px);
   }
 
-  /* Search bar */
-  .search-bar {
-    background: #f3f4f6;
+  /* Composer at bottom */
+  .composer{
+    margin-top: 35px;
+    background: #efeff1;
     border-radius: 18px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-  }
-  
-  .search-bar form {
-    display: flex;
-    gap: 8px;
-  }
-  
-  .search-bar input {
-    flex: 1;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
-    padding: 8px 12px;
-    font-size: 14px;
-  }
-  
-  .search-bar button {
-    background: #030303;
-    color: white;
+    padding: 12px 14px;
     border: none;
-    border-radius: 12px;
-    padding: 8px 16px;
+    box-shadow:none;
+
+    position: sticky;
+    bottom: 0;                 /* pegado abajo del área scrolleable */
+    z-index: 5;
+
+    /* para que no se “mezcle” visualmente con posts cuando se pega */
+    border: 1px solid rgba(0,0,0,.06);
+  }
+
+  .composer-top{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .composer-avatar{
+    width: 34px; height: 34px;
+    border-radius: 999px;
+    background:#d1d5db;
+    overflow:hidden;
+    flex: 0 0 auto;
+  }
+  .composer-avatar img{ width:100%; height:100%; object-fit:cover; }
+
+  .composer-input{
+    flex:1;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,.08);
+    background:#fff;
+    padding: 0 12px;
+    font-size: 13px;
+    color:#6b7280;
+    display:flex;
+    align-items:center;
+  }
+
+  .composer-bottom{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+  }
+
+  .add-image{
+    display:inline-flex;
+    align-items:center;
+    gap: 7px;
+    font-size: 12px;
     font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
+    color:#000000;
+    background: transparent;
+    border: none;
+    padding: 6px 2px;
+    cursor:pointer;
+    letter-spacing: .5px;
   }
-  
-  .search-bar button:hover {
-    opacity: 0.9;
+
+  .add-image img{
+    width: 16px; height: 16px;
+    object-fit:contain;
+    opacity:.9;
   }
+
+  .send-btn{
+    height: 30px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: none;
+    background:#030303;
+    color:#fff;
+    font-weight: 700;
+    font-size: 12px;
+    cursor:pointer;
+  }
+  .send-btn:hover{ opacity:.92; }
 </style>
 
 <!-- Barra de búsqueda -->
 <div class="search-bar">
   <form action="{% url 'social:search' %}" method="get">
-    <input type="text" name="q" placeholder="Search users..." required>
-    <button type="submit">Search</button>
+    <input type="text" name="q" placeholder="Buscar usuarios..." required>
+    <button type="submit">Buscar</button>
   </form>
 </div>
 
 <div class="feed-wrap">
 
+  {# POSTS REALES (arriba) #}
   {% if posts %}
     {% for post in posts %}
 
@@ -218,6 +329,7 @@
             <p class="post-text">{{ post.content }}</p>
           {% endif %}
 
+          {# Imagen real si existe; si no, los placeholders estilo Figma #}
           {% if post.image %}
             <div class="images-row">
               <div class="img-ph" style="grid-column: 1 / -1; height: 180px;">
@@ -256,11 +368,33 @@
 
     {% endfor %}
   {% else %}
-    <div class="card" style="padding:20px; text-align:center;">
-      <p>No posts yet. Follow someone or create your first post! 🏋️</p>
-      <a href="{% url 'social:search' %}" style="color: #3b82f6; text-decoration: underline;">Search for users to follow</a>
+    <div class="card" style="padding:13px; text-align:center;">
+      No hay posts aún. ¡Sigue a alguien o crea tu primer post! 💪
     </div>
   {% endif %}
+
+  {# Composer (UI only, bottom) - NO funcional #}
+  <div class="composer">
+    <div class="composer-top">
+      <div class="composer-avatar">
+        {% if user.profile.profile_picture %}
+          <img src="{{ user.profile.profile_picture.url }}" alt="me">
+        {% else %}
+          <img src="{% static 'images/profile_default.jpg' %}" alt="me">
+        {% endif %}
+      </div>
+      <div class="composer-input">Comparte algo...</div>
+    </div>
+
+    <div class="composer-bottom">
+      <button class="add-image" type="button">
+        <img src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'">
+        Imagen
+      </button>
+
+      <button class="send-btn" type="button">Enviar</button>
+    </div>
+  </div>
 
 </div>
 
