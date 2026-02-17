@@ -1,0 +1,211 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Search Users{% endblock %}
+
+{% block content %}
+<style>
+  .search-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .search-box {
+    background: #f3f4f6;
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .search-box form {
+    display: flex;
+    gap: 10px;
+  }
+
+  .search-box input {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .search-box button {
+    background: #030303;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-box button:hover {
+    opacity: 0.9;
+  }
+
+  .user-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #d1d5db;
+    overflow: hidden;
+  }
+
+  .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .user-details h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .follow-btn {
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .follow-btn.following {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  .follow-btn.not-following {
+    background: #030303;
+    color: white;
+  }
+
+  .follow-btn:hover {
+    opacity: 0.8;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+  }
+</style>
+
+<div class="search-container">
+  <div class="search-box">
+    <form method="get" action="{% url 'social:search' %}">
+      <input type="text" name="q" placeholder="Search users by username..." value="{{ query }}" required>
+      <button type="submit">Search</button>
+    </form>
+  </div>
+
+  {% if query %}
+    {% if results %}
+      {% for user in results %}
+        <div class="user-card">
+          <div class="user-info">
+            <a href="{% url 'social:user_profile' user.username %}" class="user-avatar">
+              {% if user.profile_picture %}
+                <img src="{{ user.profile_picture }}" alt="{{ user.username }}">
+              {% else %}
+                <img src="{% static 'images/profile_default.jpg' %}" alt="user">
+              {% endif %}
+            </a>
+            <div class="user-details">
+              <h3>
+                <a href="{% url 'social:user_profile' user.username %}" style="color: #111827; text-decoration: none;">
+                  {{ user.username }}
+                </a>
+              </h3>
+            </div>
+          </div>
+          <button 
+            class="follow-btn {% if user.is_following %}following{% else %}not-following{% endif %}"
+            data-user-id="{{ user.id }}"
+            onclick="toggleFollow(this)">
+            {% if user.is_following %}Following{% else %}Follow{% endif %}
+          </button>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-results">
+        <p>No users found matching "{{ query }}"</p>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="no-results">
+      <p>Search for users to follow and see their posts in your feed!</p>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function toggleFollow(button) {
+    const userId = button.getAttribute('data-user-id');
+    
+    fetch(`/follow/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.is_following) {
+                button.textContent = 'Following';
+                button.classList.remove('not-following');
+                button.classList.add('following');
+            } else {
+                button.textContent = 'Follow';
+                button.classList.remove('following');
+                button.classList.add('not-following');
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+
+{% endblock %}
