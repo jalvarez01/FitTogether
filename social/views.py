@@ -21,6 +21,9 @@ from .models import Follow, Like
 
 @login_required
 def feed_view(request):
+    print("="*50)
+    print("🔥 FEED VIEW EJECUTÁNDOSE - Usuario:", request.user)
+    print("="*50)
     # usuarios que yo sigo (mis "friends" para el feed)
     following_ids = Follow.objects.filter(
         follower=request.user
