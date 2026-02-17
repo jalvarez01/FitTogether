@@ -321,6 +321,21 @@
       display:none;
     }
 
+    .logout-btn{
+      width: 100%;
+      height: 40px;
+      border-radius: 999px;
+      border: none;
+      background: #fff;
+      font-weight: 750;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .logout-btn:hover{
+      background:#d1d5db;
+      color:#fff;
+    }
+
     /* Modal slot */
     .modal-backdrop{
       position: fixed;
@@ -414,6 +429,13 @@
               <img class="icon icon-settings" src="{% static 'icons/settings.png' %}" alt="settings">
               Settings
             </a>
+
+            <form action="{% url 'logout' %}" method="post" style="margin-top:20px;">
+              {% csrf_token %}
+              <button type="submit" class="logout-btn">
+                Logout
+              </button>
+            </form>
           </nav>
 
           <div class="brand">FitTogether</div>
