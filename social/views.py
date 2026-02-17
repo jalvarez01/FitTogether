@@ -14,7 +14,7 @@ from django.shortcuts import render
 from posts.models import Post
 from .models import Follow
 
-@login_required
+@login_required(login_url="users:register")
 def feed_view(request):
     # usuarios que yo sigo (mis "friends" para el feed)
     following_ids = Follow.objects.filter(
