@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}{% endblock %}
+{% block body_class %}no-sidebar no-right{% endblock %}
+
+{% block content %}
+<style>
+  .auth-wrap{
+    min-height: calc(100vh - 120px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 30px 16px;
+  }
+
+  .auth-card{
+    width: 520px;
+    max-width: 100%;
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 28px 28px 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.06);
+    border: 1px solid rgba(17,24,39,.06);
+  }
+
+  .auth-brand{
+    font-family: "Lobster", cursive;
+    font-size: 28px;
+    text-align:center;
+    margin-bottom: 6px;
+  }
+
+  .auth-title{
+    text-align:center;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 8px 0 4px;
+  }
+
+  .auth-sub{
+    text-align:center;
+    color:#6b7280;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  .auth-grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .field{
+    background: #f6f6f7;
+    border-radius: 16px;
+    padding: 12px 14px;
+    border: 1px solid rgba(17,24,39,.06);
+  }
+
+  .field label{
+    display:block;
+    font-size: 12px;
+    font-weight: 790;
+    color:#1b1b1b;
+    margin-bottom: 6px;
+    letter-spacing: .2px;
+  }
+
+  .field input{
+    width: 100%;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(17,24,39,.10);
+    background: #fff;
+    padding: 0 12px;
+    outline: none;
+    font-size: 14px;
+  }
+
+  .field input:focus{
+    border-color: rgba(0,0,0,.35);
+  }
+
+  /* Help text + errors */
+  .help, .errorlist{
+    margin: 8px 0 0;
+    padding-left: 16px;
+    color:#6b7280;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .errorlist{ color:#ef4444; }
+
+  .auth-actions{
+    display:flex;
+    gap: 12px;
+    align-items:center;
+    justify-content:space-between;
+    margin-top: 16px;
+  }
+
+  .btn-primary{
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: none;
+    background:#0c0c0c;
+    color:#fff;
+    font-weight: 550;
+    font-size: 13px;
+    letter-spacing: .2px;
+    cursor:pointer;
+    transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
+  }
+  .btn-primary:hover{
+    transform: translateY(-1px);
+    opacity: .92;
+    box-shadow: 0 8px 20px rgba(0,0,0,.12);
+  }
+
+  .mini{
+    color:#6b7280;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    background: #fde9fb;
+    color:#1b1b1b;
+    border: 1px solid rgba(17,24,39,.06);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+</style>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-brand">FitTogether</div>
+    <div class="auth-title">Create your profile</div>
+    <div class="auth-sub">Pick your training days per week and start your streak ✨</div>
+
+    <div style="display:flex; justify-content:center; margin-bottom:14px;">
+      <div class="pill">🗓️ Weekly training days: 1–7</div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="auth-grid">
+        <div class="field">
+          {{ form.username.label_tag }}
+          {{ form.username }}
+          {% if form.username.errors %}{{ form.username.errors }}{% endif %}
+          {% if form.username.help_text %}<div class="help">{{ form.username.help_text|safe }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          {{ form.password1.label_tag }}
+          {{ form.password1 }}
+          {% if form.password1.errors %}{{ form.password1.errors }}{% endif %}
+          {% if form.password1.help_text %}<div class="help">{{ form.password1.help_text|safe }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          {{ form.password2.label_tag }}
+          {{ form.password2 }}
+          {% if form.password2.errors %}{{ form.password2.errors }}{% endif %}
+          {% if form.password2.help_text %}<div class="help">{{ form.password2.help_text|safe }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          {{ form.weekly_training_days.label_tag }}
+          {{ form.weekly_training_days }}
+          {% if form.weekly_training_days.errors %}{{ form.weekly_training_days.errors }}{% endif %}
+          <div class="help">We’ll use this number to decide when you can post.</div>
+        </div>
+      </div>
+
+      <div class="auth-actions">
+        <div class="mini">
+          Already have an account? <a href="/accounts/login/">Login</a>
+        </div>
+        <button class="btn-primary" type="submit">Create Account</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

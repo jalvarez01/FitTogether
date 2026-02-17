@@ -20,7 +20,7 @@ from posts.models import Post
 from .models import Follow, Like
 
 
-@login_required
+@login_required(login_url="users:register")
 def feed_view(request):
     # usuarios que yo sigo (mis "friends" para el feed)
     following_ids = Follow.objects.filter(
