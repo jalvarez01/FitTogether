@@ -1,20 +1,36 @@
-"""
-Responsabilidades:
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from .models import Post
+from django.shortcuts import render, redirect
 
-- Crear publicación
-- Validar restricción diaria
-- Ver detalle de post
-"""
-from django.shortcuts import render
-from datetime import date
 
-def can_post_today(user):
-    profile = user.profile
+@login_required
+def create_post(request):
+    profile = request.user.profile
 
-    # ejemplo simple: permitir postear los primeros N días de la semana
-    weekday = date.today().weekday()  # 0=Monday, 6=Sunday
+    today = timezone.now().date()
 
-    if weekday >= profile.weekly_training_days:
-        return False
+    already_posted = Post.objects.filter(
+        author=request.user,
+        workout_date=today
+    ).exists()
 
-    return True
+    if already_posted:
+        return render(request, 'posts/not_allowed.html', {
+            'message': "You already posted today."
+        })
+
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        image = request.FILES.get('image')
+
+        Post.objects.create(
+            author=request.user,
+            content=content,
+            image=image,
+            workout_date=today
+        )
+
+        return redirect('feed')
+
+    return render(request, 'posts/create_post.html')
