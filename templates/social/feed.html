@@ -1,4 +1,4 @@
-<!-- Aquí va el feed principal -->
+
 {% extends "base.html" %}
 {% load static %}
 
@@ -142,7 +142,6 @@
     object-fit: cover;
     display:block;
   }
-  /* para icono image.png */
   .img-ph .ph-icon{
     width: 28px;
     height: 28px;
@@ -198,7 +197,6 @@
 
   .stat.comments{ gap: 5px; }
 
-  /* Ajuste específico para comment */
   .stat.comments img{
     width: 23px;
     height: 23px;
@@ -206,6 +204,115 @@
     opacity: .9;
     transform: translateY(2px);
   }
+
+  /* ── Sección de comentarios ── */
+  .comments-section {
+    margin-top: 12px;
+    display: none; /* se muestra con JS */
+  }
+
+  .comments-section.open {
+    display: block;
+  }
+
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .comment-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: fadeInUp 0.2s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .comment-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #d1d5db;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+
+  .comment-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .comment-bubble {
+    background: rgba(255,255,255,0.65);
+    border-radius: 12px;
+    padding: 7px 10px;
+    flex: 1;
+  }
+
+  .comment-bubble .comment-author {
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+  }
+
+  .comment-bubble .comment-text {
+    font-size: 13px;
+    color: #374151;
+    margin-top: 2px;
+    word-break: break-word;
+  }
+
+  .comment-bubble .comment-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 3px;
+  }
+
+  /* Input para escribir comentario */
+  .comment-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .comment-form input {
+    flex: 1;
+    border: 1px solid rgba(17,24,39,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    padding: 7px 12px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .comment-form input:focus {
+    border-color: #a8a9b1;
+  }
+
+  .comment-form button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: none;
+    background: #030303;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .comment-form button:hover { opacity: 0.88; }
 
   /* Composer at bottom */
   .composer{
@@ -217,10 +324,9 @@
     box-shadow:none;
 
     position: sticky;
-    bottom: 0;                 /* pegado abajo del área scrolleable */
+    bottom: 0;
     z-index: 5;
 
-    /* para que no se “mezcle” visualmente con posts cuando se pega */
     border: 1px solid rgba(0,0,0,.06);
   }
 
@@ -304,7 +410,6 @@
 
 <div class="feed-wrap">
 
-  {# POSTS REALES (arriba) #}
   {% if posts %}
     {% for post in posts %}
 
@@ -332,7 +437,6 @@
             <p class="post-text">{{ post.content }}</p>
           {% endif %}
 
-          {# Imagen real si existe; si no, los placeholders estilo Figma #}
           {% if post.image %}
             <div class="images-row">
               <div class="img-ph" style="grid-column: 1 / -1; height: 180px;">
@@ -360,10 +464,45 @@
               <span>Likes</span>
             </button>
 
-            <button class="stat comments" type="button">
+            <button class="stat comments" type="button"
+                    data-post-id="{{ post.id }}"
+                    onclick="toggleComments(this)">
               <img src="{% static 'icons/comment.png' %}" alt="comments">
+              <span class="comments-count">{{ post.comments_count|default:0 }}</span>
               <span>Comments</span>
             </button>
+          </div>
+
+          <!-- Sección de comentarios (oculta por defecto) -->
+          <div class="comments-section" id="comments-{{ post.id }}">
+
+            <div class="comments-list" id="comments-list-{{ post.id }}">
+              {% for comment in post.comment_set.all %}
+                <div class="comment-item">
+                  <div class="comment-avatar">
+                    {% if comment.user.profile.profile_picture %}
+                      <img src="{{ comment.user.profile.profile_picture.url }}" alt="">
+                    {% else %}
+                      <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                    {% endif %}
+                  </div>
+                  <div class="comment-bubble">
+                    <div class="comment-author">{{ comment.user.username }}</div>
+                    <div class="comment-text">{{ comment.content }}</div>
+                    <div class="comment-time">{{ comment.created_at|date:"M d, H:i" }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="comment-form">
+              <input type="text"
+                     id="comment-input-{{ post.id }}"
+                     placeholder="Write a comment..."
+                     maxlength="300">
+              <button type="button" onclick="submitComment({{ post.id }})">Send</button>
+            </div>
+
           </div>
 
         </div>
@@ -376,43 +515,45 @@
     </div>
   {% endif %}
 
-  {# Composer (UI only, bottom) - NO funcional #}
-<div class="composer">
-  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
-    {% csrf_token %}
+  <!-- Composer -->
+  <div class="composer">
+    <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+      {% csrf_token %}
 
-    <div class="composer-top">
-      <div class="composer-avatar">
-        {% if user.profile.profile_picture %}
-          <img src="{{ user.profile.profile_picture.url }}" alt="me">
-        {% else %}
-          <img src="{% static 'images/profile_default.jpg' %}" alt="me">
-        {% endif %}
+      <div class="composer-top">
+        <div class="composer-avatar">
+          {% if user.profile.profile_picture %}
+            <img src="{{ user.profile.profile_picture.url }}" alt="me">
+          {% else %}
+            <img src="{% static 'images/profile_default.jpg' %}" alt="me">
+          {% endif %}
+        </div>
+
+        <textarea 
+          name="content"
+          class="composer-input"
+          placeholder="Share something..."
+          required
+          style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
+        </textarea>
       </div>
 
-      <textarea 
-        name="content"
-        class="composer-input"
-        placeholder="Share something..."
-        required
-        style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
-      </textarea>
-    </div>
+      <div class="composer-bottom">
+        <label class="add-image">
+          <img src="{% static 'icons/image.png' %}" alt="">
+          Imagen
+          <input type="file" name="image" hidden>
+        </label>
 
-    <div class="composer-bottom">
-      <label class="add-image">
-        <img src="{% static 'icons/image.png' %}" alt="">
-        Imagen
-        <input type="file" name="image" hidden>
-      </label>
+        <button class="send-btn" type="submit">Send</button>
+      </div>
+    </form>
+  </div>
 
-      <button class="send-btn" type="submit">Send</button>
-    </div>
-  </form>
 </div>
 
 <script>
-// CSRF token para peticiones POST
+// CSRF token
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -430,7 +571,7 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 
-// Toggle like
+// Toggle like (sin cambios)
 function toggleLike(button) {
     const postId = button.getAttribute('data-post-id');
     const likesCountSpan = button.querySelector('.likes-count');
@@ -445,10 +586,7 @@ function toggleLike(button) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Actualizar contador
             likesCountSpan.textContent = data.likes_count;
-            
-            // Toggle clase active
             if (data.has_liked) {
                 button.classList.add('active');
             } else {
@@ -458,8 +596,80 @@ function toggleLike(button) {
     })
     .catch(error => console.error('Error:', error));
 }
+
+// Mostrar/ocultar sección de comentarios
+function toggleComments(button) {
+    const postId = button.getAttribute('data-post-id');
+    const section = document.getElementById('comments-' + postId);
+    section.classList.toggle('open');
+    if (section.classList.contains('open')) {
+        document.getElementById('comment-input-' + postId).focus();
+    }
+}
+
+// Enviar comentario vía fetch
+function submitComment(postId) {
+    const input = document.getElementById('comment-input-' + postId);
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch(`/comment/${postId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `content=${encodeURIComponent(content)}`,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const list = document.getElementById('comments-list-' + postId);
+            const c = data.comment;
+
+            // Crear el nuevo comentario en el DOM
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            item.innerHTML = `
+                <div class="comment-avatar">
+                    <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                </div>
+                <div class="comment-bubble">
+                    <div class="comment-author">${c.username}</div>
+                    <div class="comment-text">${escapeHtml(c.content)}</div>
+                    <div class="comment-time">${c.created_at}</div>
+                </div>
+            `;
+            list.appendChild(item);
+            list.scrollTop = list.scrollHeight;
+
+            // Actualizar contador
+            const article = document.querySelector(`article[data-post-id="${postId}"]`);
+            const countSpan = article.querySelector('.comments-count');
+            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+
+            input.value = '';
+        } else {
+            alert(data.error || 'No se pudo enviar el comentario.');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// También enviar con Enter
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.matches('.comment-form input')) {
+        const postId = e.target.id.replace('comment-input-', '');
+        submitComment(parseInt(postId));
+    }
+});
+
+// Sanitizar HTML para evitar XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
 </script>
 
-
 {% endblock %}
-

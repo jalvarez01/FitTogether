@@ -1,4 +1,4 @@
-
+#Social views.py
 """
 Responsabilidades:
 - Buscar usuarios
@@ -6,6 +6,7 @@ Responsabilidades:
 - Mostrar feed (posts de usuarios seguidos)
 - Dar/quitar like
 - Ver perfil de usuarios
+- Agregar comentarios
 """
 
 from django.contrib.auth.decorators import login_required
@@ -17,7 +18,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 
 from posts.models import Post
-from .models import Follow, Like
+from .models import Follow, Like, Comment
 
 
 @login_required(login_url="users:register")
@@ -34,7 +35,7 @@ def feed_view(request):
         Post.objects
         .filter(base_filter)
         .select_related("author")
-        .prefetch_related("like_set")
+        .prefetch_related("like_set", "comment_set__user")
         .annotate(
             likes_count=Count("like", distinct=True),
             comments_count=Count("comment", distinct=True)
@@ -195,4 +196,43 @@ def user_profile(request, username):
         "followers_count": followers_count,
         "following_count": following_count,
         "posts_count": posts_count,
+    })
+
+
+@login_required
+@require_POST
+def add_comment(request, post_id):
+    """
+    Agregar un comentario a un post
+    """
+    post = get_object_or_404(Post, id=post_id)
+
+    # Solo puede comentar si el post es propio o del alguien que sigue
+    is_own = post.author == request.user
+    is_following = Follow.objects.filter(
+        follower=request.user,
+        following=post.author
+    ).exists()
+
+    if not is_own and not is_following:
+        return JsonResponse({'success': False, 'error': 'No tienes permiso para comentar este post.'}, status=403)
+
+    content = request.POST.get('content', '').strip()
+    if not content:
+        return JsonResponse({'success': False, 'error': 'El comentario no puede estar vacío.'}, status=400)
+
+    comment = Comment.objects.create(
+        user=request.user,
+        post=post,
+        content=content
+    )
+
+    return JsonResponse({
+        'success': True,
+        'comment': {
+            'id': comment.id,
+            'username': comment.user.username,
+            'content': comment.content,
+            'created_at': comment.created_at.strftime("%b %d, %H:%M"),
+        }
     })
