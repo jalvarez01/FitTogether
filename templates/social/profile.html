@@ -64,7 +64,7 @@
 </style>
 
 <div class="profile-container">
-  <a href="{% url 'social:feed' %}" class="back-link">← Volver al feed</a>
+  <a href="{% url 'social:feed' %}" class="back-link">← Back to feed</a>
 
   <div class="profile-header">
     <div class="profile-avatar">
@@ -79,18 +79,18 @@
         </div>
         <div class="stat-item">
           <div class="number">{{ followers_count }}</div>
-          <div class="label">Seguidores</div>
+          <div class="label">Followers</div>
         </div>
         <div class="stat-item">
           <div class="number">{{ following_count }}</div>
-          <div class="label">Seguidos</div>
+          <div class="label">Following</div>
         </div>
       </div>
       {% if not is_own_profile %}
         <button class="follow-btn {% if is_following %}following{% else %}not-following{% endif %}"
                 data-user-id="{{ profile_user.id }}"
                 onclick="toggleFollow(this)">
-          {% if is_following %}Siguiendo{% else %}Seguir{% endif %}
+          {% if is_following %}Following{% else %}Follow{% endif %}
         </button>
       {% endif %}
     </div>
@@ -104,7 +104,7 @@
         <small>{{ post.created_at|date:"M d, Y" }}</small>
       </div>
     {% empty %}
-      <p>No hay posts aún</p>
+      <p>No posts yet.</p>
     {% endfor %}
   </div>
 </div>
