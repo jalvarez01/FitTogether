@@ -1,8 +1,7 @@
-
 {% extends "base.html" %}
 {% load static %}
 
-{% block page_title %}Buscar Usuarios{% endblock %}
+{% block page_title %}Search users{% endblock %}
 
 {% block content %}
 <style>
@@ -30,6 +29,11 @@
     border-radius: 12px;
     padding: 10px 14px;
     font-size: 15px;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: #5a5a5a;
   }
 
   .search-box button {
@@ -114,8 +118,8 @@
 <div class="search-container">
   <div class="search-box">
     <form method="get" action="{% url 'social:search' %}">
-      <input type="text" name="q" placeholder="Buscar por username..." value="{{ query }}" required>
-      <button type="submit">Buscar</button>
+      <input type="text" name="q" placeholder="Search for username..." value="{{ query }}" required>
+      <button type="submit">Search</button>
     </form>
   </div>
 
@@ -136,18 +140,18 @@
           <button class="follow-btn {% if user.is_following %}following{% else %}not-following{% endif %}"
                   data-user-id="{{ user.id }}"
                   onclick="toggleFollow(this)">
-            {% if user.is_following %}Siguiendo{% else %}Seguir{% endif %}
+            {% if user.is_following %}Following{% else %}Follow{% endif %}
           </button>
         </div>
       {% endfor %}
     {% else %}
       <div class="no-results">
-        <p>No hay usuarios con "{{ query }}"</p>
+        <p>No users found matching "{{ query }}"</p>
       </div>
     {% endif %}
   {% else %}
     <div class="no-results">
-      <p>Busca usuarios para seguir y ver sus posts</p>
+      <p>Search for users to follow and see their posts in your feed!</p>
     </div>
   {% endif %}
 </div>

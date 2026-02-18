@@ -1,7 +1,5 @@
-
 <!-- Aquí va el feed principal -->
 {% extends "base.html" %}
-<h1 style="color: red; font-size: 40px;">MI CÓDIGO ESTÁ VIVO</h1>
 {% load static %}
 
 {% block nav_feed_active %}is-active{% endblock %}
@@ -36,12 +34,17 @@
     padding: 8px 12px;
     font-size: 14px;
   }
+
+  .search-bar input:focus {
+    outline: none;
+    border-color: #a8a9b1;
+  }
   
   .search-bar button {
     background: #030303;
     color: white;
     border: none;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 8px 16px;
     font-weight: 600;
     font-size: 13px;
@@ -294,8 +297,8 @@
 <!-- Barra de búsqueda -->
 <div class="search-bar">
   <form action="{% url 'social:search' %}" method="get">
-    <input type="text" name="q" placeholder="Buscar usuarios..." required>
-    <button type="submit">Buscar</button>
+    <input type="text" name="q" placeholder="Search users..." required>
+    <button type="submit">Search</button>
   </form>
 </div>
 
@@ -369,7 +372,7 @@
     {% endfor %}
   {% else %}
     <div class="card" style="padding:13px; text-align:center;">
-      No hay posts aún. ¡Sigue a alguien o crea tu primer post! 💪
+      No posts yet. Follow someone or create your first post! ᕦ(ง •̀_•́)ᕤ
     </div>
   {% endif %}
 
@@ -390,7 +393,7 @@
       <textarea 
         name="content"
         class="composer-input"
-        placeholder="Comparte algo..."
+        placeholder="Share something..."
         required
         style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
       </textarea>
@@ -403,7 +406,7 @@
         <input type="file" name="image" hidden>
       </label>
 
-      <button class="send-btn" type="submit">Enviar</button>
+      <button class="send-btn" type="button">Send</button>
     </div>
   </form>
 </div>
