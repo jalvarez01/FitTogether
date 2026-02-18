@@ -377,7 +377,10 @@
   {% endif %}
 
   {# Composer (UI only, bottom) - NO funcional #}
-  <div class="composer">
+<div class="composer">
+  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+
     <div class="composer-top">
       <div class="composer-avatar">
         {% if user.profile.profile_picture %}
@@ -386,19 +389,26 @@
           <img src="{% static 'images/profile_default.jpg' %}" alt="me">
         {% endif %}
       </div>
-      <div class="composer-input">Share something...</div>
+
+      <textarea 
+        name="content"
+        class="composer-input"
+        placeholder="Share something..."
+        required
+        style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
+      </textarea>
     </div>
 
     <div class="composer-bottom">
-      <button class="add-image" type="button">
-        <img src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'">
+      <label class="add-image">
+        <img src="{% static 'icons/image.png' %}" alt="">
         Imagen
-      </button>
+        <input type="file" name="image" hidden>
+      </label>
 
       <button class="send-btn" type="button">Send</button>
     </div>
-  </div>
-
+  </form>
 </div>
 
 <script>
