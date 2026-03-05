@@ -1,4 +1,3 @@
-
 from django.urls import path
 from . import views
 
@@ -10,4 +9,5 @@ urlpatterns = [
     path("follow/<int:user_id>/", views.toggle_follow, name="toggle_follow"),
     path("like/<int:post_id>/", views.toggle_like, name="toggle_like"),
     path("profile/<str:username>/", views.user_profile, name="user_profile"),
+    path("comment/<int:post_id>/", views.add_comment, name="add_comment"),
 ]

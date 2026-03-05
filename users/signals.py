@@ -6,7 +6,10 @@ from django.dispatch import receiver
 
 from .models import Profile
 
+
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
+    # Default to 1 so the profile is always valid.
+    # The signup form will overwrite this with the user's real value.
     if created:
-        Profile.objects.create(user=instance, weekly_training_days=0)
+        Profile.objects.create(user=instance, weekly_training_days=1)

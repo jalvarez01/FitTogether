@@ -1,4 +1,3 @@
-<!-- Aquí va el feed principal -->
 {% extends "base.html" %}
 {% load static %}
 
@@ -142,7 +141,6 @@
     object-fit: cover;
     display:block;
   }
-  /* para icono image.png */
   .img-ph .ph-icon{
     width: 28px;
     height: 28px;
@@ -198,7 +196,6 @@
 
   .stat.comments{ gap: 5px; }
 
-  /* Ajuste específico para comment */
   .stat.comments img{
     width: 23px;
     height: 23px;
@@ -207,20 +204,129 @@
     transform: translateY(2px);
   }
 
+  /* ── Sección de comentarios ── */
+  .comments-section {
+    margin-top: 12px;
+    display: none; /* se muestra con JS */
+  }
+
+  .comments-section.open {
+    display: block;
+  }
+
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .comment-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: fadeInUp 0.2s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .comment-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #d1d5db;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+
+  .comment-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .comment-bubble {
+    background: rgba(255,255,255,0.65);
+    border-radius: 12px;
+    padding: 7px 10px;
+    flex: 1;
+  }
+
+  .comment-bubble .comment-author {
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+  }
+
+  .comment-bubble .comment-text {
+    font-size: 13px;
+    color: #374151;
+    margin-top: 2px;
+    word-break: break-word;
+  }
+
+  .comment-bubble .comment-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 3px;
+  }
+
+  /* Input para escribir comentario */
+  .comment-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .comment-form input {
+    flex: 1;
+    border: 1px solid rgba(17,24,39,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    padding: 7px 12px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .comment-form input:focus {
+    border-color: #a8a9b1;
+  }
+
+  .comment-form button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: none;
+    background: #030303;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .comment-form button:hover { opacity: 0.88; }
+
   /* Composer at bottom */
   .composer{
-    margin-top: 35px;
+    margin-top: 4px;
     background: #efeff1;
     border-radius: 18px;
     padding: 12px 14px;
     border: none;
     box-shadow:none;
 
-    position: sticky;
-    bottom: 0;                 /* pegado abajo del área scrolleable */
+    margin-top: 14px;
+    margin-bottom: 16px;
+    bottom: 0;
     z-index: 5;
 
-    /* para que no se “mezcle” visualmente con posts cuando se pega */
     border: 1px solid rgba(0,0,0,.06);
   }
 
@@ -292,6 +398,28 @@
     cursor:pointer;
   }
   .send-btn:hover{ opacity:.92; }
+
+  .composer-status{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items:center;
+    margin: 10px 0 12px;
+    font-size: 13px;
+  }
+  .composer-status .status-ok{
+    background: #eef2ff;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .composer-status .status-warn{
+    background: #fff7ed;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+
 </style>
 
 <!-- Barra de búsqueda -->
@@ -304,7 +432,6 @@
 
 <div class="feed-wrap">
 
-  {# POSTS REALES (arriba) #}
   {% if posts %}
     {% for post in posts %}
 
@@ -332,7 +459,6 @@
             <p class="post-text">{{ post.content }}</p>
           {% endif %}
 
-          {# Imagen real si existe; si no, los placeholders estilo Figma #}
           {% if post.image %}
             <div class="images-row">
               <div class="img-ph" style="grid-column: 1 / -1; height: 180px;">
@@ -360,10 +486,45 @@
               <span>Likes</span>
             </button>
 
-            <button class="stat comments" type="button">
+            <button class="stat comments" type="button"
+                    data-post-id="{{ post.id }}"
+                    onclick="toggleComments(this)">
               <img src="{% static 'icons/comment.png' %}" alt="comments">
+              <span class="comments-count">{{ post.comments_count|default:0 }}</span>
               <span>Comments</span>
             </button>
+          </div>
+
+          <!-- Sección de comentarios (oculta por defecto) -->
+          <div class="comments-section" id="comments-{{ post.id }}">
+
+            <div class="comments-list" id="comments-list-{{ post.id }}">
+              {% for comment in post.comment_set.all %}
+                <div class="comment-item">
+                  <div class="comment-avatar">
+                    {% if comment.user.profile.profile_picture %}
+                      <img src="{{ comment.user.profile.profile_picture.url }}" alt="">
+                    {% else %}
+                      <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                    {% endif %}
+                  </div>
+                  <div class="comment-bubble">
+                    <div class="comment-author">{{ comment.user.username }}</div>
+                    <div class="comment-text">{{ comment.content }}</div>
+                    <div class="comment-time">{{ comment.created_at|date:"M d, H:i" }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="comment-form">
+              <input type="text"
+                     id="comment-input-{{ post.id }}"
+                     placeholder="Write a comment..."
+                     maxlength="300">
+              <button type="button" onclick="submitComment({{ post.id }})">Send</button>
+            </div>
+
           </div>
 
         </div>
@@ -376,43 +537,10 @@
     </div>
   {% endif %}
 
-  {# Composer (UI only, bottom) - NO funcional #}
-<div class="composer">
-  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
-    {% csrf_token %}
-
-    <div class="composer-top">
-      <div class="composer-avatar">
-        {% if user.profile.profile_picture %}
-          <img src="{{ user.profile.profile_picture.url }}" alt="me">
-        {% else %}
-          <img src="{% static 'images/profile_default.jpg' %}" alt="me">
-        {% endif %}
-      </div>
-
-      <textarea 
-        name="content"
-        class="composer-input"
-        placeholder="Share something..."
-        required
-        style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
-      </textarea>
-    </div>
-
-    <div class="composer-bottom">
-      <label class="add-image">
-        <img src="{% static 'icons/image.png' %}" alt="">
-        Imagen
-        <input type="file" name="image" hidden>
-      </label>
-
-      <button class="send-btn" type="submit">Send</button>
-    </div>
-  </form>
 </div>
 
 <script>
-// CSRF token para peticiones POST
+// CSRF token
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -430,7 +558,7 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 
-// Toggle like
+// Toggle like (sin cambios)
 function toggleLike(button) {
     const postId = button.getAttribute('data-post-id');
     const likesCountSpan = button.querySelector('.likes-count');
@@ -445,10 +573,7 @@ function toggleLike(button) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Actualizar contador
             likesCountSpan.textContent = data.likes_count;
-            
-            // Toggle clase active
             if (data.has_liked) {
                 button.classList.add('active');
             } else {
@@ -458,8 +583,277 @@ function toggleLike(button) {
     })
     .catch(error => console.error('Error:', error));
 }
-</script>
 
+// Mostrar/ocultar sección de comentarios
+function toggleComments(button) {
+    const postId = button.getAttribute('data-post-id');
+    const section = document.getElementById('comments-' + postId);
+    section.classList.toggle('open');
+    if (section.classList.contains('open')) {
+        document.getElementById('comment-input-' + postId).focus();
+    }
+}
+
+// Enviar comentario vía fetch
+function submitComment(postId) {
+    const input = document.getElementById('comment-input-' + postId);
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch(`/comment/${postId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `content=${encodeURIComponent(content)}`,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const list = document.getElementById('comments-list-' + postId);
+            const c = data.comment;
+
+            // Crear el nuevo comentario en el DOM
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            item.innerHTML = `
+                <div class="comment-avatar">
+                    <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                </div>
+                <div class="comment-bubble">
+                    <div class="comment-author">${c.username}</div>
+                    <div class="comment-text">${escapeHtml(c.content)}</div>
+                    <div class="comment-time">${c.created_at}</div>
+                </div>
+            `;
+            list.appendChild(item);
+            list.scrollTop = list.scrollHeight;
+
+            // Actualizar contador
+            const article = document.querySelector(`article[data-post-id="${postId}"]`);
+            const countSpan = article.querySelector('.comments-count');
+            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+
+            input.value = '';
+        } else {
+            alert(data.error || 'No se pudo enviar el comentario.');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// También enviar con Enter
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.matches('.comment-form input')) {
+        const postId = e.target.id.replace('comment-input-', '');
+        submitComment(parseInt(postId));
+    }
+});
+
+// Sanitizar HTML para evitar XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+</script>
 
 {% endblock %}
 
+{% block main_bottom %}
+<!-- Composer -->
+<div class="composer">
+  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="composer-status">
+      {% if can_post %}
+        <span class="status-ok">Training days remaining this week: <b>{{ training_days_remaining }}</b> / {{ weekly_training_days }}</span>
+        {% if already_posted_today %}
+          <span class="status-warn">You already posted today.</span>
+        {% endif %}
+      {% else %}
+        {% if already_posted_today %}
+          <span class="status-warn">You already posted today (max 1 per day).</span>
+        {% elif training_days_remaining == 0 %}
+          <span class="status-warn">You completed your training days for this week. Come back next week ✨</span>
+        {% else %}
+          <span class="status-warn">Posting is disabled right now.</span>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="composer-top">
+      <div class="composer-avatar">
+        {% if user.profile.profile_picture %}
+          <img src="{{ user.profile.profile_picture.url }}" alt="me">
+        {% else %}
+          <img src="{% static 'images/profile_default.jpg' %}" alt="me">
+        {% endif %}
+      </div>
+
+      <textarea 
+        name="content"
+        class="composer-input"
+        {% if not can_post %}disabled{% endif %}
+        placeholder="Share something..."
+        required
+        style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;">
+      </textarea>
+    </div>
+
+    <div class="composer-bottom">
+      <label class="add-image">
+        <img src="{% static 'icons/image.png' %}" alt="">
+        Image
+        <input type="file" name="image" hidden {% if not can_post %}disabled{% endif %}>
+      </label>
+
+      <button class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
+        {% if can_post %}Send{% else %}Locked{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block right_panel %}
+<style>
+  .streak-card{ padding: 2px 16px 16px; }
+  .streak-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 15px; }
+  .streak-title{ font-weight: 700; font-size: 19px; letter-spacing: .1px; }
+  .streak-sub{ font-size: 11px; color: var(--muted); margin-top: 10px; }
+
+  .month-nav{ display:flex; align-items:center; gap: 10px; margin-top: 19px; }
+  .month-btn{
+    width: 30px; height: 25px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.08);
+    background: #fff;
+    cursor:pointer;
+    display:flex; align-items:flex-start; justify-content:center;
+    font-weight: 700;
+  }
+  .month-btn:hover{ opacity:.75; }
+
+  .month-label{ font-weight: 600; font-size: 13px; }
+
+  .cal{
+    width: 100%;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,.06);
+    background: #fff;
+    padding: 12px;
+  }
+  .cal-head{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-align:center;
+    font-weight: 700;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .day{
+    height: 34px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 12px;
+    color: #111827;
+    user-select:none;
+    position: relative;
+  }
+  .day.muted{ color: rgba(17,24,39,.25); }
+  .day.done{
+    background: rgba(17,24,39,.18);
+    color: white;
+    width: 24px;
+    height: 24px;
+    margin: auto;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 2;
+  }
+  .day.today{ 
+    outline: 1px solid rgba(17,24,39,.18);
+    outline-offset: 2px;
+  }
+  .streak-stats{
+    display:flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .pill{
+    flex:1;
+    background: #f9fafb;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 16px;
+    padding: 10px 12px;
+  }
+  .pill .n{ font-weight: 700; font-size: 16px; }
+  .pill .t{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+</style>
+
+<div class="card right-card streak-card">
+  <div class="streak-top">
+    <div>
+      <div class="streak-title">Streak</div>
+      <div class="streak-sub">Your streak increases when you complete your weekly workouts. ✨</div>
+    </div>
+
+    <div class="month-nav">
+      <a class="month-btn" href="?month={{ calendar_prev_month }}&year={{ calendar_prev_year }}" aria-label="previous month">‹</a>
+      <div class="month-label">{{ calendar_month_label }} {{ calendar_year }}</div>
+      <a class="month-btn" href="?month={{ calendar_next_month }}&year={{ calendar_next_year }}" aria-label="next month">›</a>
+    </div>
+  </div>
+
+  <div class="cal">
+    <div class="cal-head">
+      <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+    </div>
+
+    <div class="cal-grid">
+      {% for week in calendar_weeks %}
+        {% for day in week %}
+          {% if day == 0 %}
+            <div class="day muted">&nbsp;</div>
+          {% else %}
+            <div class="day
+              {% if day in calendar_completed_days %}done{% endif %}
+              {% if calendar_today_day and day == calendar_today_day %}today{% endif %}
+            ">
+              {{ day }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="streak-stats">
+    <div class="pill">
+      <div class="n">{{ current_weekly_streak }}</div>
+      <div class="t">Weeks</div>
+    </div>
+    <div class="pill">
+      <div class="n">{{ weekly_progress }}/{{ weekly_goal }}</div>
+      <div class="t">This week</div>
+    </div>
+    <div class="pill">
+      <div class="n">{{ longest_weekly_streak }}</div>
+      <div class="t">Best (weeks)</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

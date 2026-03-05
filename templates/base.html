@@ -174,6 +174,7 @@
       height: 24px;
       object-fit: contain;
       transition: transform .15s ease;
+      filter: brightness(0);
     }
 
     .profile-link:hover{ opacity:.92; }
@@ -214,7 +215,7 @@
     }
 
     .brand{
-      margin-top: 19px;
+      margin-top: auto;
       padding: 12px 10px;
       font-family: "Lobster";
       font-weight: 400;
@@ -485,6 +486,8 @@
 
             {% block content %}{% endblock %}
           </div>
+
+          {% block main_bottom %}{% endblock %}
 
         </main>
 

@@ -14,3 +14,4 @@ db.sqlite3
 # macOS
 .DS_Storedb.sqlite3
 *.sqlite3
+.DS_Store
