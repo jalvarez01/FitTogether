@@ -448,6 +448,10 @@
               </a>
               <div class="time">{{ post.created_at|date:"M d, H:i" }}</div>
             </div>
+
+            {% if post.can_edit_now %}
+              <a class="edit-post-btn" href="{% url 'posts:edit_post' post.id %}">Edit</a>
+            {% endif %}
           </div>
 
           {% if post.content %}
@@ -517,7 +521,7 @@
                      id="comment-input-{{ post.id }}"
                      placeholder="Write a comment..."
                      maxlength="300">
-              <button type="button" onclick="submitComment({{ post.id }})">Send</button>
+              <button type="button" onclick="submitComment('{{ post.id }}')">Send</button>
             </div>
 
           </div>
@@ -626,7 +630,7 @@ function submitComment(postId) {
             list.scrollTop = list.scrollHeight;
 
             // Actualizar contador
-            const article = document.querySelector(`article[data-post-id="${postId}"]`);
+            const article = document.querySelector(\`article[data-post-id="\${postId}"]\`);
             const countSpan = article.querySelector('.comments-count');
             countSpan.textContent = parseInt(countSpan.textContent) + 1;
 
