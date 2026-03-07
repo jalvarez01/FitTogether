@@ -315,18 +315,13 @@
 
   /* Composer at bottom */
   .composer{
-    margin-top: 4px;
     background: #efeff1;
     border-radius: 18px;
     padding: 12px 14px;
-    border: none;
     box-shadow:none;
-
     margin-top: 14px;
     margin-bottom: 16px;
-    bottom: 0;
     z-index: 5;
-
     border: 1px solid rgba(0,0,0,.06);
   }
 
@@ -776,8 +771,8 @@ function escapeHtml(text) {
   .day.done{
     background: rgba(17,24,39,.18);
     color: white;
-    width: 24px;
-    height: 24px;
+    width: 27px;
+    height: 27px;
     margin: auto;
     border-radius: 50%;
     font-size: 12px;
@@ -786,7 +781,11 @@ function escapeHtml(text) {
   }
   .day.today{ 
     outline: 1px solid rgba(17,24,39,.18);
-    outline-offset: 2px;
+    outline-offset: 1px;
+    outline-width: 2px;
+    width: 22px;
+    height: 22px;
+    margin: auto;
   }
   .streak-stats{
     display:flex;

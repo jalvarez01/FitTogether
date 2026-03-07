@@ -1,0 +1,171 @@
+# FitTogether 
+
+## Student Information
+- **Full Name:** Juan José Álvarez Ocampo, Viviana Arango Tabares and Helen Sanabria
+- **Class:** ST0251
+- **Course:** Project 1
+- **Professor:** Paola Andrea Vallejo Correa
+
+---
+
+
+## Environment
+- **Operating System:** Windows 11 Pro, Version 10.0.22621, x64-based PC. And macOS Tahoe 26.0.1
+- **Processor:** Intel64 Family 6 Model 142 Stepping 10, ~2001 MHz, and Apple Silicon M4
+- **Memory:** 16 GB RAM, 512 GB 
+- **Terminal:** PowerShell 5.1 and zsh 5.9 (arm64-apple-darwin25.0)
+
+---
+
+
+## Prerequisites
+Before starting, make sure you have the following installed on your computer:
+
+1. **Python 3.8 or higher**
+   - Check installation: `python --version` or `python3 --version`
+   - Download from: https://www.python.org/downloads/
+
+2. **pip** (usually comes with Python)
+   - Check installation: `pip --version` or `pip3 --version`
+
+3. **Git** (optional, if you're going to clone the repository)
+   - Check installation: `git --version`
+   - Download from: https://git-scm.com/downloads
+
+---
+
+## Installation and Setup
+
+### Step 1: Get the Code
+
+```bash
+git clone https://github.com/jalvarez01/FitTogether.git
+cd fittogether
+```
+
+### Step 2: Create a Virtual Environment
+
+**On Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**On macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+When the virtual environment is activated, you'll see `(venv)` at the beginning of your command line.
+
+### Step 3: Install Dependencies
+
+With the virtual environment activated, install all project dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+This will install:
+
+- asgiref
+- Django
+- gunicorn
+- packaging
+- pillow
+- sqlparse
+- typing_extensions
+
+### Step 5: Create a Superuser (Optional)
+
+To access Django's admin panel, create a superuser:
+
+```bash
+python manage.py createsuperuser
+```
+
+You'll be asked for:
+- Username
+- Email address
+- Password (you type it but it won't show on screen)
+
+### Step 6: Run the Development Server
+
+Start Django's local server:
+
+```bash
+python manage.py runserver
+```
+
+You'll see a message similar to:
+```
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+```
+
+### Step 7: Open the Application
+
+Open your web browser and visit:
+- **Main application:** http://127.0.0.1:8000/ or http://localhost:8000/
+- **Admin panel:** http://127.0.0.1:8000/admin/ (use superuser credentials)
+
+
+---
+
+
+## Useful Commands
+
+### Stop the Server
+Press `Ctrl + C` in the terminal where the server is running.
+
+### Deactivate the Virtual Environment
+```bash
+deactivate
+```
+
+### Create New Migrations (after modifying models)
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### Collect Static Files (for production)
+```bash
+python manage.py collectstatic
+```
+
+### Run Django Shell (for testing)
+```bash
+python manage.py shell
+```
+
+---
+
+
+## Common Troubleshooting
+
+### Error: "python is not recognized as a command"
+- **Solution:** Make sure Python is installed and added to your system's PATH.
+- Try using `python3` instead of `python`.
+
+### Error: "No module named 'django'"
+- **Solution:** Make sure you have the virtual environment activated and have run `pip install -r requirements.txt`.
+
+### Error: "Port is already in use"
+- **Solution:** Port 8000 is already being used. You can:
+  - Close the other process using the port
+  - Use another port: `python manage.py runserver 8001`
+
+### Error loading images
+- **Solution:** Make sure Pillow is installed correctly: `pip install Pillow`
+
+### Migration issues
+- **Solution:** Try resetting migrations:
+```bash
+python manage.py migrate --run-syncdb
+```
+
+---
+
+**Last updated:** February 2026
