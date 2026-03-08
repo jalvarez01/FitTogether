@@ -5,9 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.utils import timezone
 
-from .forms import PostForm
+from .forms import PostForm, PostEditForm
 from .models import Post
 
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpResponseForbidden
 
 def _week_bounds(local_day):
     """
@@ -88,3 +90,25 @@ def create_post(request):
         messages.error(request, "Could not create the post. Please check the form and try again.")
 
     return redirect("social:feed")
+
+@login_required
+def edit_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+
+    # Solo el autor puede editar
+    if post.author != request.user:
+        return HttpResponseForbidden("You can only edit your own posts.")
+
+    # Solo dentro de 24 horas
+    if not post.can_edit(request.user):
+        return HttpResponseForbidden("You can only edit posts within 24 hours.")
+
+    if request.method == "POST":
+        form = PostEditForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            form.save()
+            return redirect("social:feed")  
+    else:
+        form = PostEditForm(instance=post)
+
+    return render(request, "posts/edit_post.html", {"form": form, "post": post})

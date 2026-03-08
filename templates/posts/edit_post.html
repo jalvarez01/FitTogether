@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Edit Post{% endblock %}
+
+{% block content %}
+<style>
+  .edit-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .edit-card {
+    background: #efeff1;
+    border-radius: 18px;
+    padding: 16px;
+    border: 1px solid rgba(0,0,0,.06);
+  }
+
+  .edit-title {
+    font-weight: 800;
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #111827;
+  }
+
+  .edit-field {
+    margin-bottom: 12px;
+  }
+
+  .edit-label {
+    display: block;
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+
+  .edit-textarea {
+    width: 100%;
+    border: 1px solid rgba(17,24,39,.10);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.85);
+    padding: 10px 12px;
+    font-size: 13px;
+    outline: none;
+    resize: vertical;
+    min-height: 90px;
+  }
+
+  .edit-textarea:focus {
+    border-color: #a8a9b1;
+  }
+
+  .edit-file {
+    width: 100%;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(17,24,39,.10);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  .btn-pill {
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 12px;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-primary {
+    background: #030303;
+    color: #fff;
+  }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.85);
+    color: #111827;
+    border: 1px solid rgba(0,0,0,.10);
+  }
+
+  .btn-pill:hover { opacity: 0.88; }
+
+  .edit-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .remove-image {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #111827;
+    margin-top: 6px;
+  }
+
+  .error-list {
+    margin: 0 0 10px 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #fff7ed;
+    border: 1px solid rgba(0,0,0,.06);
+    color: #111827;
+    font-size: 12px;
+  }
+</style>
+
+<div class="edit-wrap">
+  <div class="edit-card">
+
+    <div class="edit-title">Edit Post</div>
+
+    {% if form.errors %}
+      <div class="error-list">
+        Please fix the errors below.
+      </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="edit-field">
+        <label class="edit-label">Message</label>
+        {{ form.content.as_widget|safe }}
+      </div>
+
+      <div class="edit-field">
+        <label class="edit-label">Photo</label>
+        {{ form.image.as_widget|safe }}
+
+        {% if form.remove_image %}
+          <label class="remove-image">
+            {{ form.remove_image }} Remove current image
+          </label>
+        {% endif %}
+      </div>
+
+      <div class="edit-actions">
+        <button class="btn-pill btn-primary" type="submit">Save</button>
+        <a class="btn-pill btn-secondary" href="{% url 'social:feed' %}">Cancel</a>
+      </div>
+
+      <div class="edit-hint">
+        You can edit your post only within 24 hours after creation.
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  // Aplicar las clases bonitas a los widgets de Django (sin tocar Python)
+  (function() {
+    const textarea = document.querySelector('textarea[name="content"]');
+    if (textarea) textarea.classList.add('edit-textarea');
+
+    const file = document.querySelector('input[type="file"][name="image"]');
+    if (file) file.classList.add('edit-file');
+  })();
+</script>
+{% endblock %}

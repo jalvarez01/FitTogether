@@ -23,6 +23,7 @@ from .models import Follow, Like, Comment
 from users.models import WorkoutCompletion
 
 
+
 def _week_bounds(local_day):
     """(start_dt, end_dt) for the week (Mon 00:00 -> next Mon 00:00) in current TZ."""
     start_day = local_day - timedelta(days=local_day.weekday())  # Monday
@@ -123,6 +124,9 @@ def feed_view(request):
     # Marcar qué posts tienen like del usuario actual
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
+
+    for post in posts:
+        post.can_edit_now = post.can_edit(request.user)
 
     # Posting rules (for UI):
     today = timezone.localdate()
@@ -370,3 +374,4 @@ def add_comment(request, post_id):
             'created_at': comment.created_at.strftime("%b %d, %H:%M"),
         }
     })
+
