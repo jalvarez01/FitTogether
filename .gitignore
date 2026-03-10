@@ -16,3 +16,12 @@ db.sqlite3
 *.sqlite3
 .DS_Store
 media/
+
+# SSH keys / secrets
+*.pem
+*.key
+*.pub
+id_ed25519
+id_ed25519.pub
+.ssh/
+.env
