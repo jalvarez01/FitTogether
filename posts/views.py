@@ -86,17 +86,30 @@ def create_post(request):
 def edit_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
 
+    # Solo el autor puede editar
     if post.author != request.user:
         return HttpResponseForbidden("You can only edit your own posts.")
 
+    # Solo dentro de 24 horas
     if not post.can_edit(request.user):
         return HttpResponseForbidden("You can only edit posts within 24 hours.")
 
     if request.method == "POST":
         form = PostEditForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
+            content = (form.cleaned_data.get("content") or "").strip()
+            image = form.cleaned_data.get("image")
+
+            allowed, reason = moderate_post(content, image)
+            if not allowed:
+                messages.error(request, f"Post blocked: {reason}")
+                return redirect("posts:edit_post", post_id=post.id)
+
             form.save()
+            messages.success(request, "Post updated successfully.")
             return redirect("social:feed")
+        else:
+            messages.error(request, "Could not update the post. Please check the form and try again.")
     else:
         form = PostEditForm(instance=post)
 
