@@ -720,7 +720,7 @@
 
 {% block main_bottom %}
 <div class="composer">
-  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+  <form id="create-post-form" method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div class="composer-status">
@@ -761,11 +761,26 @@
         <input type="file" name="image" hidden {% if not can_post %}disabled{% endif %}>
       </label>
 
-      <button class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
+      <button id="create-post-submit" class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
         {% if can_post %}Send{% else %}Locked{% endif %}
       </button>
     </div>
   </form>
+
+  <script>
+    (function () {
+      const form = document.getElementById("create-post-form");
+      const btn = document.getElementById("create-post-submit");
+      if (!form || !btn) return;
+
+      form.addEventListener("submit", function () {
+        if (btn.disabled) return;
+        btn.dataset.originalText = btn.textContent.trim();
+        btn.textContent = "Analyzing...";
+        btn.disabled = true;
+      });
+    })();
+  </script>
 </div>
 {% endblock %}
 
@@ -966,4 +981,20 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const form = document.getElementById("create-post-form");
+    const btn = document.getElementById("create-post-submit");
+    if (!form || !btn) return;
+
+    form.addEventListener("submit", function () {
+      if (btn.disabled) return;
+      btn.dataset.originalText = btn.textContent.trim();
+      btn.textContent = "Analyzing...";
+      btn.disabled = true;
+    });
+  })();
+</script>
+
 {% endblock %}
