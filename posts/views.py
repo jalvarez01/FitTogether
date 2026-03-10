@@ -6,16 +6,12 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import PostEditForm, PostForm
+from .forms import PostForm, PostEditForm
 from .models import Post
 from .services.gemini_moderation import moderate_post
 
 
 def _week_bounds(local_day):
-    """
-    Returns (start_dt, end_dt) for the current week in the server/user timezone.
-    Week starts on Monday 00:00 and ends next Monday 00:00.
-    """
     start_day = local_day - timedelta(days=local_day.weekday())  # Monday
     start_dt = timezone.make_aware(datetime.combine(start_day, datetime.min.time()))
     end_dt = start_dt + timedelta(days=7)
@@ -28,11 +24,7 @@ def create_post(request):
         return redirect("social:feed")
 
     today = timezone.localdate()
-
-    already_posted_today = Post.objects.filter(
-        author=request.user,
-        created_at__date=today,
-    ).exists()
+    already_posted_today = Post.objects.filter(author=request.user, created_at__date=today).exists()
     if already_posted_today:
         messages.error(request, "You have already created a post today. Only 1 post per day is allowed.")
         return redirect("social:feed")
@@ -43,11 +35,7 @@ def create_post(request):
         return redirect("social:feed")
 
     start_dt, end_dt = _week_bounds(today)
-    posts_this_week = Post.objects.filter(
-        author=request.user,
-        created_at__gte=start_dt,
-        created_at__lt=end_dt,
-    ).count()
+    posts_this_week = Post.objects.filter(author=request.user, created_at__gte=start_dt, created_at__lt=end_dt).count()
 
     if posts_this_week >= weekly_limit:
         messages.error(
@@ -86,31 +74,29 @@ def create_post(request):
 def edit_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
 
-    # Solo el autor puede editar
     if post.author != request.user:
         return HttpResponseForbidden("You can only edit your own posts.")
 
-    # Solo dentro de 24 horas
     if not post.can_edit(request.user):
         return HttpResponseForbidden("You can only edit posts within 24 hours.")
 
     if request.method == "POST":
         form = PostEditForm(request.POST, request.FILES, instance=post)
-        if form.is_valid():
-            content = (form.cleaned_data.get("content") or "").strip()
-            image = form.cleaned_data.get("image")
-
-            allowed, reason = moderate_post(content, image)
-            if not allowed:
-                messages.error(request, f"Post blocked: {reason}")
-                return redirect("posts:edit_post", post_id=post.id)
-
-            form.save()
-            messages.success(request, "Post updated successfully.")
-            return redirect("social:feed")
-        else:
+        if not form.is_valid():
             messages.error(request, "Could not update the post. Please check the form and try again.")
-    else:
-        form = PostEditForm(instance=post)
+            return redirect("posts:edit_post", post_id=post.id)
 
+        content = (form.cleaned_data.get("content") or "").strip()
+        image = form.cleaned_data.get("image")  # puede venir None si no cambian imagen
+
+        allowed, reason = moderate_post(content, image)
+        if not allowed:
+            messages.error(request, f"Post blocked: {reason}")
+            return redirect("posts:edit_post", post_id=post.id)
+
+        form.save()
+        messages.success(request, "Post updated successfully.")
+        return redirect("social:feed")
+
+    form = PostEditForm(instance=post)
     return render(request, "posts/edit_post.html", {"form": form, "post": post})
