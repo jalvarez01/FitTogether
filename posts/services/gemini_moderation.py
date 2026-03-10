@@ -19,11 +19,20 @@ def _safe_settings():
     ]
 
 
-def _extract_json_object(s: str) -> Optional[str]:
+def _strip_code_fences(s: str) -> str:
+    s = (s or "").strip()
+    if s.startswith("```"):
+        s = s.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
+    return s
+
+
+def _extract_first_json_object(s: str) -> Optional[str]:
+    s = (s or "").strip()
     start = s.find("{")
     if start == -1:
         return None
 
+    # Busca el primer bloque JSON balanceado
     depth = 0
     for i in range(start, len(s)):
         ch = s[i]
@@ -34,37 +43,33 @@ def _extract_json_object(s: str) -> Optional[str]:
             if depth == 0:
                 return s[start : i + 1]
 
-    # incomplete / truncated json
+    # Si quedó incompleto, devolvemos desde el primer "{"
     return s[start:]
 
 
-def _try_parse_json_maybe_truncated(raw: str) -> Optional[Dict[str, Any]]:
-    cleaned = (raw or "").strip()
-    cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+def _parse_json_maybe_truncated(raw: str) -> Optional[Dict[str, Any]]:
+    cleaned = _strip_code_fences(raw)
 
-    # direct parse
+    # 1) intento directo
     try:
         return json.loads(cleaned)
     except Exception:
         pass
 
-    # extract first object
-    obj = _extract_json_object(cleaned)
-    if not obj:
+    # 2) extraer primer objeto JSON
+    json_str = _extract_first_json_object(cleaned)
+    if not json_str:
         return None
 
-    # parse extracted
+    # 3) parse
     try:
-        return json.loads(obj)
+        return json.loads(json_str)
     except Exception:
         pass
 
-    # if truncated, try closing braces
-    if obj.startswith("{") and not obj.rstrip().endswith("}"):
-        opens = obj.count("{")
-        closes = obj.count("}")
-        missing = max(0, opens - closes)
-        fixed = obj + ("}" * missing)
+    # 4) si está cortado, cerramos llaves
+    if json_str.count("{") > json_str.count("}"):
+        fixed = json_str + ("}" * (json_str.count("{") - json_str.count("}")))
         try:
             return json.loads(fixed)
         except Exception:
@@ -75,7 +80,7 @@ def _try_parse_json_maybe_truncated(raw: str) -> Optional[Dict[str, Any]]:
 
 def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tuple[bool, str]:
     api_key = (getattr(settings, "GEMINI_API_KEY", "") or "").strip()
-    model = (getattr(settings, "GEMINI_MODEL_TEXT", "gemini-2.0-flash") or "").strip()
+    model = (getattr(settings, "GEMINI_MODEL_TEXT", "gemini-2.5-flash") or "").strip()
 
     if not api_key:
         return False, "Moderation service is not configured (missing GEMINI_API_KEY)."
@@ -84,23 +89,31 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
     if not text and not image_file:
         return False, "Post is empty."
 
-    # hard local rule (testing)
+    # ✅ Hard local rule para pruebas: SIEMPRE bloquea melocoton
     if "melocoton" in text.lower():
         return False, "Blocked term: melocoton (testing rule)."
 
     blocked_terms = ["melocoton"]
 
     moderation_prompt = (
-        "Return ONLY JSON. No markdown. No extra text.\n"
-        'Schema: {"allow": true/false, "reason": "short"}\n'
-        f"Hard-block terms: {blocked_terms}\n"
-        "Block also for: hate/harassment, sexual content (esp minors), explicit sex, self-harm instructions, illegal wrongdoing instructions.\n"
+        "You are FitTogether Moderation.\n"
+        "Decide if a post is allowed.\n\n"
+        "Hard rules (ALWAYS BLOCK):\n"
+        f"- If the text contains any of these blocked terms (exact or obvious variants): {blocked_terms}\n\n"
+        "Also BLOCK if content includes:\n"
+        "- Hate/harassment\n"
+        "- Sexual content involving minors\n"
+        "- Explicit sexual content\n"
+        "- Self-harm instructions\n"
+        "- Illegal wrongdoing instructions\n\n"
+        "Return ONLY JSON in ONE LINE (no markdown/backticks):\n"
+        '{"allow": true/false, "reason": "short_reason"}\n'
         "Keep reason under 60 chars.\n"
     )
 
     parts = [{"text": moderation_prompt}]
     if text:
-        parts.append({"text": text})
+        parts.append({"text": f"USER_POST_TEXT:\n{text}"})
 
     if image_file:
         try:
@@ -109,16 +122,15 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
             pos = None
 
         raw = image_file.read()
-        if pos is not None:
-            try:
+
+        # devolver puntero
+        try:
+            if pos is not None:
                 image_file.seek(pos)
-            except Exception:
-                pass
-        else:
-            try:
+            else:
                 image_file.seek(0)
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         mime = (
             getattr(image_file, "content_type", None)
@@ -127,16 +139,15 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
         )
         b64 = base64.b64encode(raw).decode("utf-8")
         parts.append({"inline_data": {"mime_type": mime, "data": b64}})
-        parts.append({"text": "Apply the same rules to the image."})
+        parts.append({"text": "USER_POST_IMAGE: Apply the same rules to the image."})
 
     payload = {
         "safetySettings": _safe_settings(),
-        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
             "temperature": 0.0,
             "maxOutputTokens": 256,
-            "stopSequences": ["}\n", "}"],
         },
+        "contents": [{"role": "user", "parts": parts}],
     }
 
     url = GEMINI_ENDPOINT.format(model=model)
@@ -145,7 +156,10 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
         r = requests.post(
             url,
             json=payload,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            headers={
+                "x-goog-api-key": api_key,
+                "Content-Type": "application/json",
+            },
             timeout=timeout_s,
         )
     except requests.RequestException:
@@ -155,28 +169,46 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
         return False, "Moderation service error ({}): {}".format(r.status_code, r.text[:300])
 
     data = r.json()
+
+    # Prompt bloqueado antes de generar
+    prompt_feedback = data.get("promptFeedback") or {}
+    if prompt_feedback.get("blockReason"):
+        return False, "Post blocked by safety filters (prompt blocked)."
+
     candidates = data.get("candidates") or []
     if not candidates:
-        return False, "Post blocked by safety filters."
+        return False, "Post blocked by safety filters (no candidates)."
 
-    parts_out = (((candidates[0].get("content") or {}).get("parts")) or [])
+    c0 = candidates[0] or {}
+
+    # Candidate bloqueado por SAFETY / RECITATION
+    finish_reason = (c0.get("finishReason") or "").upper()
+    if finish_reason in {"SAFETY", "RECITATION"}:
+        return False, "Post blocked by safety filters ({})".format(finish_reason.lower())
+
+    #  leer texto si existe
+    content_obj = c0.get("content") or {}
+    parts_out = content_obj.get("parts") or []
     text_out = "".join(p.get("text", "") for p in parts_out).strip()
-    if not text_out:
-        return False, "Post blocked by safety filters (empty model output)."
 
-    parsed = _try_parse_json_maybe_truncated(text_out)
+    if not text_out:
+        safety_ratings = c0.get("safetyRatings") or []
+        if safety_ratings:
+            return False, "Post blocked by safety filters (no output)."
+        return False, "Moderation service returned an empty response."
+
+    # Parse robusto del JSON (aunque venga truncado)
+    parsed = _parse_json_maybe_truncated(text_out)
     if not parsed:
-        preview = text_out[:200].replace("\n", " ")
+        preview = _strip_code_fences(text_out)[:200].replace("\n", " ")
         return False, "Moderation service returned an invalid response: {}".format(preview)
 
     allow_value = parsed.get("allow", parsed.get("allowed", None))
     if allow_value is None:
-        preview = text_out[:200].replace("\n", " ")
-        return False, "Moderation service returned an invalid response (missing allow): {}".format(preview)
+        preview = _strip_code_fences(text_out)[:200].replace("\n", " ")
+        return False, "Moderation service returned an invalid response (missing allow/allowed): {}".format(preview)
 
     allow = bool(allow_value)
     reason = (parsed.get("reason") or "").strip() or ("OK" if allow else "Not allowed")
 
-    if allow:
-        return True, "OK"
-    return False, reason
+    return (True, "OK") if allow else (False, reason)
