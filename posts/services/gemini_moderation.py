@@ -89,7 +89,7 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
     if not text and not image_file:
         return False, "Post is empty."
 
-    # ✅ Hard local rule para pruebas: SIEMPRE bloquea melocoton
+    # Hard local rule para pruebas: SIEMPRE bloquea melocoton
     if "melocoton" in text.lower():
         return False, "Blocked term: melocoton (testing rule)."
 
