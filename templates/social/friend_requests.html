@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Friends{% endblock %}
+
+{% block content %}
+<style>
+  .friends-container {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .section {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid #e6e8ee;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .05);
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 10px;
+  }
+
+  .section::-webkit-scrollbar { width: 6px; }
+  .section::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 999px; }
+
+  .section-title {
+    font-family: "Space Grotesk", Inter, system-ui;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    background: white;
+    padding-bottom: 10px;
+    z-index: 5;
+  }
+
+  .section-title .badge {
+    background: #030303;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+  }
+
+  .user-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #e6e8ee;
+    transition: opacity 0.2s;
+  }
+
+  .user-card:last-child { border-bottom: none; }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #d1d5db;
+    overflow: hidden;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-details { flex: 1; }
+
+  .user-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #030303;
+    text-decoration: none;
+  }
+
+  .user-name:hover { opacity: 0.7; }
+  .user-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .action-buttons { display: flex; gap: 8px; }
+
+  .btn-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #e6e8ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+  }
+
+  .btn-circle:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,.1); }
+  .btn-accept { background: #030303; color: white; border: none; }
+  .btn-accept:hover { background: #1a1a1a; }
+  .btn-reject { background: white; color: #6b7280; }
+  .btn-reject:hover { background: #fee2e2; color: #ef4444; border-color: #ef4444; }
+  .btn-remove { background: white; color: #6b7280; }
+  .btn-remove:hover { background: #fee2e2; color: #ef4444; border-color: #ef4444; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #6b7280; font-size: 14px; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f3f4f6;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: #374151;
+  }
+</style>
+
+<div class="friends-container">
+
+  <!-- SOLICITUDES RECIBIDAS -->
+  <div class="section">
+    <div class="section-title">
+      <span>📩 Friend requests</span>
+      <span class="badge">{{ received_requests|length }}</span>
+    </div>
+    {% if received_requests %}
+      {% for req in received_requests %}
+        <div class="user-card">
+          <div class="user-info">
+            <a href="{% url 'social:user_profile' req.follower.username %}" class="user-avatar">
+              <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.follower.username }}">
+            </a>
+            <div class="user-details">
+              <a href="{% url 'social:user_profile' req.follower.username %}" class="user-name">{{ req.follower.username }}</a>
+              <div class="user-meta">Wants to be your friend · {{ req.created_at|date:"M d" }}</div>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="btn-circle btn-accept" title="Accept"
+                    data-url="{% url 'social:accept_friend_request' req.id %}"
+                    onclick="acceptRequest(this)">✓</button>
+            <button class="btn-circle btn-reject" title="Reject"
+                    data-url="{% url 'social:reject_friend_request' req.id %}"
+                    onclick="removeCard(this)">✗</button>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state"><p>No pending friend requests ✨</p></div>
+    {% endif %}
+  </div>
+
+  <!-- TUS AMIGOS -->
+  <div class="section">
+    <div class="section-title">
+      <span>👥 Your friends</span>
+      <span class="badge" id="friends-badge">{{ my_friends|length }}</span>
+    </div>
+    <div id="friends-list">
+      {% if my_friends %}
+        {% for friend in my_friends %}
+          <div class="user-card">
+            <div class="user-info">
+              <a href="{% url 'social:user_profile' friend.following.username %}" class="user-avatar">
+                <img src="{% static 'images/profile_default.jpg' %}" alt="{{ friend.following.username }}">
+              </a>
+              <div class="user-details">
+                <a href="{% url 'social:user_profile' friend.following.username %}" class="user-name">{{ friend.following.username }}</a>
+                <div class="user-meta">Friends since {{ friend.updated_at|date:"M d, Y" }}</div>
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button class="btn-circle btn-remove" title="Remove friend"
+                      data-url="{% url 'social:remove_friend' friend.following.id %}"
+                      data-name="{{ friend.following.username }}"
+                      onclick="removeFriend(this)">✗</button>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" id="friends-empty"><p>You don't have any friends yet. Search for users and send a friend request! 🔍</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SOLICITUDES ENVIADAS -->
+  <div class="section">
+    <div class="section-title">
+      <span>⏳ Sent requests</span>
+      <span class="badge">{{ sent_requests|length }}</span>
+    </div>
+    {% if sent_requests %}
+      {% for req in sent_requests %}
+        <div class="user-card">
+          <div class="user-info">
+            <a href="{% url 'social:user_profile' req.following.username %}" class="user-avatar">
+              <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.following.username }}">
+            </a>
+            <div class="user-details">
+              <a href="{% url 'social:user_profile' req.following.username %}" class="user-name">{{ req.following.username }}</a>
+              <div class="user-meta"><span class="pill">⏳ Pending</span></div>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="btn-circle btn-reject" title="Cancel request"
+                    data-url="{% url 'social:reject_friend_request' req.id %}"
+                    onclick="removeCard(this)">✗</button>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state"><p>No pending sent requests</p></div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+function getCookie(name) {
+  let v = null;
+  if (document.cookie) {
+    document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+  }
+  return v;
+}
+const csrftoken = getCookie('csrftoken');
+
+function postAjax(url) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+  }).then(r => r.json());
+}
+
+function fadeRemove(card) {
+  card.style.opacity = '0';
+  setTimeout(() => card.remove(), 200);
+}
+
+// Rechazar / cancelar solicitud
+function removeCard(button) {
+  button.disabled = true;
+  postAjax(button.getAttribute('data-url'))
+    .then(data => {
+      if (data.success) fadeRemove(button.closest('.user-card'));
+      else button.disabled = false;
+    })
+    .catch(() => { button.disabled = false; });
+}
+
+// Eliminar amigo con confirmación
+function removeFriend(button) {
+  if (!confirm('Remove ' + button.getAttribute('data-name') + ' from your friends?')) return;
+  button.disabled = true;
+  postAjax(button.getAttribute('data-url'))
+    .then(data => {
+      if (data.success) {
+        fadeRemove(button.closest('.user-card'));
+        const badge = document.getElementById('friends-badge');
+        if (badge) badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+      } else { button.disabled = false; }
+    })
+    .catch(() => { button.disabled = false; });
+}
+
+// Aceptar solicitud: quita la card y agrega al amigo a la lista al instante
+function acceptRequest(button) {
+  button.disabled = true;
+  postAjax(button.getAttribute('data-url'))
+    .then(data => {
+      if (data.success) {
+        fadeRemove(button.closest('.user-card'));
+
+        const emptyState = document.getElementById('friends-empty');
+        if (emptyState) emptyState.remove();
+
+        const removeUrl = '/remove-friend/' + data.friend_id + '/';
+        const profileUrl = data.friend_profile_url;
+        const username = data.friend_username;
+        const imgSrc = "{% static 'images/profile_default.jpg' %}";
+
+        const newCard = document.createElement('div');
+        newCard.className = 'user-card';
+        newCard.style.opacity = '0';
+        newCard.innerHTML = `
+          <div class="user-info">
+            <a href="${profileUrl}" class="user-avatar">
+              <img src="${imgSrc}" alt="${username}">
+            </a>
+            <div class="user-details">
+              <a href="${profileUrl}" class="user-name">${username}</a>
+              <div class="user-meta">Friends since just now</div>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="btn-circle btn-remove" title="Remove friend"
+                    data-url="${removeUrl}"
+                    data-name="${username}"
+                    onclick="removeFriend(this)">✗</button>
+          </div>
+        `;
+        document.getElementById('friends-list').appendChild(newCard);
+        setTimeout(() => { newCard.style.transition = 'opacity 0.2s'; newCard.style.opacity = '1'; }, 50);
+
+        const badge = document.getElementById('friends-badge');
+        if (badge) badge.textContent = parseInt(badge.textContent) + 1;
+      } else { button.disabled = false; }
+    })
+    .catch(() => { button.disabled = false; });
+}
+</script>
+
+{% endblock %}

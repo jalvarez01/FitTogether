@@ -686,7 +686,7 @@
           list.appendChild(item);
           list.scrollTop = list.scrollHeight;
 
-          const article = document.querySelector(`article[data-post-id="${postId}"]`);
+          const article = document.querySelector('article[data-post-id="' + postId + '"]');
           if (article) {
             const countSpan = article.querySelector('.comments-count');
             if (countSpan) {
