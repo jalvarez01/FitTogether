@@ -6,15 +6,18 @@ Responsabilidades:
 - Dar/quitar like
 - Ver perfil de usuarios
 - Agregar comentarios
+- Gestión de solicitudes de amistad (aceptar, rechazar, eliminar)
 """
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.db import models
 from django.db.models import Count, Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.contrib import messages
 from datetime import datetime, timedelta
 import calendar
 
@@ -175,24 +178,41 @@ def search_users(request):
             id=request.user.id
         ).select_related('profile')[:10]
 
-        # Verificar qué usuarios ya sigo
+        # Verificar relaciones existentes
         following_ids = Follow.objects.filter(
-            follower=request.user
+            follower=request.user,
+            status='accepted'
         ).values_list('following_id', flat=True)
+        
+        pending_sent_ids = Follow.objects.filter(
+            follower=request.user,
+            status='pending'
+        ).values_list('following_id', flat=True)
+        
+        pending_received_ids = Follow.objects.filter(
+            following=request.user,
+            status='pending'
+        ).values_list('follower_id', flat=True)
 
         for user in users:
             results.append({
                 'id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile.profile_picture.url if hasattr(user, 'profile') and user.profile.profile_picture else None,
-                'is_following': user.id in following_ids,
+                'is_friend': user.id in following_ids,
+                'has_pending_sent': user.id in pending_sent_ids,
+                'has_pending_received': user.id in pending_received_ids,
             })
 
     # Para que el calendario/streak funcione también en Search:
     today = timezone.localdate()
     weekly_limit = getattr(getattr(request.user, "profile", None), "weekly_training_days", 0) or 0
     start_dt, end_dt = _week_bounds(today)
-    posts_this_week = Post.objects.filter(author=request.user, created_at__gte=start_dt, created_at__lt=end_dt).count()
+    posts_this_week = Post.objects.filter(
+        author=request.user,
+        created_at__gte=start_dt,
+        created_at__lt=end_dt
+    ).count()
 
     streak_ctx = _streak_calendar_context(
         request,
@@ -207,49 +227,44 @@ def search_users(request):
     }
     ctx.update(streak_ctx)
 
+    # 👈 ESTO ES LO IMPORTANTE: SIEMPRE DEBE HABER UN RETURN
     return render(request, "social/search.html", ctx)
 
 
 @login_required
 @require_POST
 def toggle_follow(request, user_id):
-    """
-    Seguir o dejar de seguir a un usuario
-    """
     target_user = get_object_or_404(User, id=user_id)
-
-    # No puedes seguirte a ti mismo
+ 
     if target_user == request.user:
-        return JsonResponse({
-            'success': False,
-            'error': 'No puedes seguirte a ti mismo'
-        }, status=400)
-
-    # Verificar si ya lo sigo
+        return JsonResponse({'success': False, 'error': 'No puedes seguirte a ti mismo'}, status=400)
+ 
     follow_obj = Follow.objects.filter(
         follower=request.user,
         following=target_user
     ).first()
-
+ 
     if follow_obj:
         follow_obj.delete()
         is_following = False
+        is_pending = False
     else:
         Follow.objects.create(
             follower=request.user,
-            following=target_user
+            following=target_user,
+            status='pending'
         )
-        is_following = True
-
-    # Si es AJAX, devolver JSON
+        is_following = False   # ← todavía NO es amigo, solo solicitud enviada
+        is_pending = True
+ 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({
             'success': True,
             'is_following': is_following,
+            'is_pending': is_pending,
         })
-
+ 
     return redirect('social:feed')
-
 
 @login_required
 @require_POST
@@ -287,9 +302,23 @@ def toggle_like(request, post_id):
 def user_profile(request, username):
     profile_user = get_object_or_404(User, username=username)
 
+    # Verificar estado de amistad
     is_following = Follow.objects.filter(
         follower=request.user,
-        following=profile_user
+        following=profile_user,
+        status='accepted'
+    ).exists()
+    
+    has_pending = Follow.objects.filter(
+        follower=request.user,
+        following=profile_user,
+        status='pending'
+    ).exists()
+    
+    received_pending = Follow.objects.filter(
+        follower=profile_user,
+        following=request.user,
+        status='pending'
     ).exists()
 
     posts = Post.objects.filter(
@@ -302,8 +331,8 @@ def user_profile(request, username):
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
 
-    followers_count = Follow.objects.filter(following=profile_user).count()
-    following_count = Follow.objects.filter(follower=profile_user).count()
+    followers_count = Follow.objects.filter(following=profile_user, status='accepted').count()
+    following_count = Follow.objects.filter(follower=profile_user, status='accepted').count()
     posts_count = posts.count()
 
     # context para el calendario/streak del usuario logueado
@@ -326,6 +355,8 @@ def user_profile(request, username):
     ctx = {
         "profile_user": profile_user,
         "is_following": is_following,
+        "has_pending": has_pending,
+        "received_pending": received_pending,
         "is_own_profile": profile_user == request.user,
         "posts": posts,
         "followers_count": followers_count,
@@ -340,32 +371,28 @@ def user_profile(request, username):
 @login_required
 @require_POST
 def add_comment(request, post_id):
-    """
-    Agregar un comentario a un post
-    """
     post = get_object_or_404(Post, id=post_id)
-
-    # Solo puede comentar si el post es propio o del alguien que sigue
+ 
     is_own = post.author == request.user
     is_following = Follow.objects.filter(
         follower=request.user,
         following=post.author
     ).exists()
-
+ 
     if not is_own and not is_following:
-        return JsonResponse({'success': False, 'error': 'No tienes permiso para comentar este post.'}, status=403)
-
+        return JsonResponse({'success': False, 'error': 'No permission to comment.'}, status=403)
+ 
     content = request.POST.get('content', '').strip()
     if not content:
-        return JsonResponse({'success': False, 'error': 'El comentario no puede estar vacío.'}, status=400)
-
+        return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
+ 
     comment = Comment.objects.create(
         user=request.user,
         post=post,
         content=content
     )
-
-    return JsonResponse({
+ 
+    return JsonResponse({          # ← FALTABA ESTE RETURN
         'success': True,
         'comment': {
             'id': comment.id,
@@ -374,4 +401,143 @@ def add_comment(request, post_id):
             'created_at': comment.created_at.strftime("%b %d, %H:%M"),
         }
     })
+ 
 
+
+# ============================================================================
+# FUNCIONES DE AMISTAD (NUEVAS)
+# ============================================================================
+
+@login_required
+def friend_requests(request):
+    """
+    Muestra las solicitudes de amistad pendientes
+    """
+    # Solicitudes que me han enviado a mí (pending)
+    received_requests = Follow.objects.filter(
+        following=request.user,
+        status='pending'
+    ).select_related('follower')
+
+    # Mis solicitudes enviadas (pending)
+    sent_requests = Follow.objects.filter(
+        follower=request.user,
+        status='pending'
+    ).select_related('following')
+
+    # Mis amigos actuales (accepted)
+    my_friends = Follow.objects.filter(
+        follower=request.user,
+        status='accepted'
+    ).select_related('following')
+
+    # Para el calendario/streak en esta página
+    today = timezone.localdate()
+    weekly_limit = getattr(getattr(request.user, "profile", None), "weekly_training_days", 0) or 0
+    start_dt, end_dt = _week_bounds(today)
+    posts_this_week = Post.objects.filter(
+        author=request.user,
+        created_at__gte=start_dt,
+        created_at__lt=end_dt
+    ).count()
+
+    streak_ctx = _streak_calendar_context(
+        request,
+        today=today,
+        posts_this_week=posts_this_week,
+        weekly_limit=weekly_limit,
+    )
+
+    ctx = {
+        "received_requests": received_requests,
+        "sent_requests": sent_requests,
+        "my_friends": my_friends,
+    }
+    ctx.update(streak_ctx)
+
+    return render(request, "social/friend_requests.html", ctx)
+
+
+@login_required
+@require_POST
+def accept_friend_request(request, request_id):
+    friend_request = get_object_or_404(
+        Follow,
+        id=request_id,
+        following=request.user,
+        status='pending'
+    )
+ 
+    friend_request.status = 'accepted'
+    friend_request.save()
+ 
+    # Crear relación inversa si no existe
+    Follow.objects.get_or_create(
+        follower=request.user,
+        following=friend_request.follower,
+        defaults={'status': 'accepted'}
+    )
+    # Si ya existía pendiente, actualizarla
+    Follow.objects.filter(
+        follower=request.user,
+        following=friend_request.follower,
+        status='pending'
+    ).update(status='accepted')
+ 
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': f"You are now friends with {friend_request.follower.username}",
+            'friend_id': friend_request.follower.id,       # ← necesario para el JS
+            'friend_username': friend_request.follower.username,
+            'friend_profile_url': f"/profile/{friend_request.follower.username}/",
+        })
+ 
+    messages.success(request, f"You are now friends with {friend_request.follower.username}")
+    return redirect('social:friend_requests')
+ 
+@login_required
+@require_POST
+def reject_friend_request(request, request_id):
+    """
+    Rechazar/cancelar una solicitud de amistad.
+    Funciona tanto si eres el receptor (rechazar) como el emisor (cancelar).
+    """
+    # Buscar la solicitud donde yo soy el receptor O el emisor
+    friend_request = Follow.objects.filter(
+        id=request_id,
+        status='pending'
+    ).filter(
+        models.Q(following=request.user) | models.Q(follower=request.user)
+    ).first()
+ 
+    if not friend_request:
+        from django.http import Http404
+        raise Http404("No Follow matches the given query.")
+ 
+    friend_request.delete()
+ 
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': "Request removed"})
+ 
+    messages.success(request, "Request removed")
+    return redirect('social:friend_requests')
+
+
+@login_required
+@require_POST
+def remove_friend(request, friend_id):
+    # Eliminar AMBAS direcciones de la relación
+    deleted, _ = Follow.objects.filter(
+        Q(follower=request.user, following_id=friend_id) |
+        Q(follower_id=friend_id, following=request.user)
+    ).delete()
+ 
+    if not deleted:
+        return JsonResponse({'success': False, 'error': 'Not friends with this user.'}, status=404)
+ 
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Friend removed'})
+ 
+    messages.success(request, "Friend removed")
+    return redirect('social:friend_requests')
