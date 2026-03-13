@@ -6,10 +6,10 @@
 {% block content %}
 <style>
   .profile-container { 
-  max-width: 800px; 
-  margin: 0 auto;
-  padding-right: 16px;
-  box-sizing: border-box; 
+    max-width: 800px; 
+    margin: 0 auto;
+    padding-right: 16px;
+    box-sizing: border-box; 
   }
   .back-link { display: block; margin-bottom: 15px; color: #030303; font-weight: 600; }
   .profile-header {
@@ -28,9 +28,7 @@
     border: 4px solid white;
   }
   .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .profile-info {
-    flex: 1;
-  }
+  .profile-info { flex: 1; }
   .profile-names {
     font-size: 21px;
     font-weight: 700;
@@ -43,29 +41,23 @@
     margin: 15px 0;
   }
   .stat-item { text-align: center; }
-  .stat-item .number {
-    font-size: 18px;
-    font-weight: 700;
-  }
-  .stat-item .label {
-    font-size: 12px;
-    color: #6b7280;
-  }
+  .stat-item .number { font-size: 18px; font-weight: 700; }
+  .stat-item .label { font-size: 12px; color: #6b7280; }
+
   .follow-btn {
     padding: 8px 20px;
     border-radius: 12px;
     border: none;
     font-weight: 600;
     cursor: pointer;
+    font-size: 14px;
+    transition: opacity 0.2s;
   }
-  .follow-btn.following {
-    background: #e5e7eb;
-    color: #374151;
-  }
-  .follow-btn.not-following {
-    background: #030303;
-    color: white;
-  }
+  .follow-btn:hover { opacity: 0.85; }
+  .follow-btn.following { background: #e5e7eb; color: #374151; }
+  .follow-btn.not-following { background: #030303; color: white; }
+  .follow-btn.pending { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+
   .posts-section { margin-top: 20px; }
   .post {
     border-radius: 18px;
@@ -75,11 +67,7 @@
     max-width: 100%;
     box-sizing: border-box;
   }
-  .posts-title{
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  }
+  .posts-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
 </style>
 
 <div class="profile-container">
@@ -87,7 +75,11 @@
 
   <div class="profile-header">
     <div class="profile-avatar">
-      <img src="{% static 'images/profile_default.jpg' %}" alt="">
+      {% if profile_user.profile.profile_picture %}
+        <img src="{{ profile_user.profile.profile_picture.url }}" alt="{{ profile_user.username }}">
+      {% else %}
+        <img src="{% static 'images/profile_default.jpg' %}" alt="">
+      {% endif %}
     </div>
     <div class="profile-info">
       <h1 class="profile-names">{{ profile_user.username }}</h1>
@@ -97,7 +89,7 @@
           <div class="label">Posts</div>
         </div>
         <div class="stat-item">
-          <div class="number">{{ followers_count }}</div>
+          <div class="number" id="followers-count">{{ followers_count }}</div>
           <div class="label">Followers</div>
         </div>
         <div class="stat-item">
@@ -105,11 +97,14 @@
           <div class="label">Following</div>
         </div>
       </div>
+
       {% if not is_own_profile %}
-        <button class="follow-btn {% if is_following %}following{% else %}not-following{% endif %}"
-                data-user-id="{{ profile_user.id }}"
-                onclick="toggleFollow(this)">
-          {% if is_following %}Following{% else %}Follow{% endif %}
+        <button
+          id="follow-btn-profile"
+          class="follow-btn {% if is_following %}following{% elif has_pending %}pending{% else %}not-following{% endif %}"
+          data-user-id="{{ profile_user.id }}"
+          onclick="toggleFollow(this)">
+          {% if is_following %}Following{% elif has_pending %}⏳ Request sent{% else %}Follow{% endif %}
         </button>
       {% endif %}
     </div>
@@ -130,34 +125,52 @@
 
 <script>
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
+  let v = null;
+  if (document.cookie) {
+    document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+  }
+  return v;
 }
 const csrftoken = getCookie('csrftoken');
 
 function toggleFollow(button) {
-    const userId = button.dataset.userId;
-    fetch(`/follow/${userId}/`, {
-        method: 'POST',
-        headers: {'X-CSRFToken': csrftoken},
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            button.textContent = data.is_following ? 'Following' : 'Follow';
-            button.className = `follow-btn ${data.is_following ? 'following' : 'not-following'}`;
+  const userId = button.getAttribute('data-user-id');
+  button.disabled = true;
+
+  fetch(`/follow/${userId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrftoken,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      const countEl = document.getElementById('followers-count');
+      if (data.is_following) {
+        button.textContent = 'Following';
+        button.className = 'follow-btn following';
+        if (countEl) countEl.textContent = parseInt(countEl.textContent) + 1;
+      } else if (data.is_pending) {
+        button.textContent = '⏳ Request sent';
+        button.className = 'follow-btn pending';
+      } else {
+        // Cancelled request or unfollowed
+        button.textContent = 'Follow';
+        button.className = 'follow-btn not-following';
+        // Only decrement followers if was actually following (accepted)
+        if (button.className.includes('following') && countEl) {
+          countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
         }
-    });
+      }
+    }
+    button.disabled = false;
+  })
+  .catch(err => { console.error(err); button.disabled = false; });
 }
 </script>
 {% endblock %}
@@ -168,82 +181,19 @@ function toggleFollow(button) {
   .streak-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 15px; }
   .streak-title{ font-weight: 700; font-size: 19px; letter-spacing: .1px; }
   .streak-sub{ font-size: 11px; color: var(--muted); margin-top: 10px; }
-
   .month-nav{ display:flex; align-items:center; gap: 10px; margin-top: 19px; }
-  .month-btn{
-    width: 30px; height: 25px;
-    border-radius: 999px;
-    border: 1px solid rgba(0,0,0,.08);
-    background: #fff;
-    cursor:pointer;
-    display:flex; align-items:flex-start; justify-content:center;
-    font-weight: 700;
-  }
+  .month-btn{ width: 30px; height: 25px; border-radius: 999px; border: 1px solid rgba(0,0,0,.08); background: #fff; cursor:pointer; display:flex; align-items:flex-start; justify-content:center; font-weight: 700; }
   .month-btn:hover{ opacity:.75; }
   .month-label{ font-weight: 600; font-size: 13px; }
-
-  .cal{
-    width: 100%;
-    border-radius: 18px;
-    border: 1px solid rgba(0,0,0,.06);
-    background: #fff;
-    padding: 12px;
-  }
-  .cal-head{
-    display:grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 8px;
-    text-align:center;
-    font-weight: 700;
-  }
-  .cal-grid{
-    display:grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-  }
-  .day{
-    height: 34px;
-    border-radius: 999px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size: 12px;
-    color: #111827;
-    user-select:none;
-  }
+  .cal{ width: 100%; border-radius: 18px; border: 1px solid rgba(0,0,0,.06); background: #fff; padding: 12px; }
+  .cal-head{ display:grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 11px; color: var(--muted); margin-bottom: 8px; text-align:center; font-weight: 700; }
+  .cal-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day{ height: 34px; border-radius: 999px; display:flex; align-items:center; justify-content:center; font-size: 12px; color: #111827; user-select:none; }
   .day.muted{ color: rgba(17,24,39,.25); }
-  .day.done{
-    background: rgba(17,24,39,.18);
-    color: white;
-    width: 27px;
-    height: 27px;
-    margin: auto;
-    border-radius: 50%;
-    font-weight: 700;
-  }
-  .day.today{ 
-    outline: 1px solid rgba(17,24,39,.18);
-    outline-offset: 1px;
-    outline-width: 2px;
-    width: 22px;
-    height: 22px;
-    margin: auto;
-  }
-  .streak-stats{
-    display:flex;
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .pill{
-    flex:1;
-    background: #f9fafb;
-    border: 1px solid rgba(0,0,0,.06);
-    border-radius: 16px;
-    padding: 10px 12px;
-  }
+  .day.done{ background: rgba(17,24,39,.18); color: white; width: 27px; height: 27px; margin: auto; border-radius: 50%; font-weight: 700; }
+  .day.today{ outline: 2px solid rgba(17,24,39,.18); outline-offset: 1px; width: 22px; height: 22px; margin: auto; }
+  .streak-stats{ display:flex; gap: 10px; margin-top: 12px; }
+  .pill{ flex:1; background: #f9fafb; border: 1px solid rgba(0,0,0,.06); border-radius: 16px; padding: 10px 12px; }
   .pill .n{ font-weight: 700; font-size: 16px; }
   .pill .t{ font-size: 12px; color: var(--muted); margin-top: 2px; }
 </style>
@@ -254,7 +204,6 @@ function toggleFollow(button) {
       <div class="streak-title">Streak</div>
       <div class="streak-sub">Your streak increases when you complete your weekly workouts. ✨</div>
     </div>
-
     <div class="month-nav">
       <a class="month-btn" href="?month={{ calendar_prev_month }}&year={{ calendar_prev_year }}">‹</a>
       <div class="month-label">{{ calendar_month_label }} {{ calendar_year }}</div>
@@ -266,17 +215,13 @@ function toggleFollow(button) {
     <div class="cal-head">
       <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
     </div>
-
     <div class="cal-grid">
       {% for week in calendar_weeks %}
         {% for day in week %}
           {% if day == 0 %}
             <div class="day muted">&nbsp;</div>
           {% else %}
-            <div class="day
-              {% if day in calendar_completed_days %}done{% endif %}
-              {% if calendar_today_day and day == calendar_today_day %}today{% endif %}
-            ">
+            <div class="day{% if day in calendar_completed_days %} done{% endif %}{% if calendar_today_day and day == calendar_today_day %} today{% endif %}">
               {{ day }}
             </div>
           {% endif %}
@@ -286,18 +231,9 @@ function toggleFollow(button) {
   </div>
 
   <div class="streak-stats">
-    <div class="pill">
-      <div class="n">{{ current_weekly_streak }}</div>
-      <div class="t">Weeks</div>
-    </div>
-    <div class="pill">
-      <div class="n">{{ weekly_progress }}/{{ weekly_goal }}</div>
-      <div class="t">This week</div>
-    </div>
-    <div class="pill">
-      <div class="n">{{ longest_weekly_streak }}</div>
-      <div class="t">Best (weeks)</div>
-    </div>
+    <div class="pill"><div class="n">{{ current_weekly_streak }}</div><div class="t">Weeks</div></div>
+    <div class="pill"><div class="n">{{ weekly_progress }}/{{ weekly_goal }}</div><div class="t">This week</div></div>
+    <div class="pill"><div class="n">{{ longest_weekly_streak }}</div><div class="t">Best (weeks)</div></div>
   </div>
 </div>
 {% endblock %}

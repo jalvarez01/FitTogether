@@ -8,6 +8,16 @@ from django.core.exceptions import ValidationError
 
 
 class Follow(models.Model):
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (ACCEPTED, 'Accepted'),
+        (REJECTED, 'Rejected'),
+    ]
+    
     follower = models.ForeignKey(
         User,
         related_name='following',
@@ -18,7 +28,13 @@ class Follow(models.Model):
         related_name='followers',
         on_delete=models.CASCADE
     )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('follower', 'following')
@@ -29,7 +45,7 @@ class Follow(models.Model):
             raise ValidationError("Users cannot follow themselves.")
 
     def __str__(self):
-        return f"{self.follower.username} follows {self.following.username}"
+        return f"{self.follower.username} follows {self.following.username} ({self.status})"
 
 
 class Like(models.Model):
