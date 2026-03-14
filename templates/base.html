@@ -501,15 +501,9 @@
         <!-- RIGHT PANEL -->
         <aside class="right">
           {% block right_panel %}
-          <div class="card right-card">
-            <div class="right__top">
-              <div class="right__title">Streak</div>
-              <div class="right__month">February</div>
-            </div>
-            <div style="padding: 0 14px 14px; color: var(--muted); font-size: 13px;">
-              (Panel derecho para calendario)
-            </div>
-          </div>
+            {% if user.is_authenticated %}
+              {% include "includes/streak_panel.html" %}
+            {% endif %}
           {% endblock %}
         </aside>
 
