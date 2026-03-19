@@ -10,7 +10,7 @@ from django.utils import timezone
 from .forms import PostForm, PostEditForm
 from .models import Post
 from .services.gemini_moderation import moderate_post
-
+from django.http import JsonResponse
 
 def _week_bounds(local_day):
     start_day = local_day - timedelta(days=local_day.weekday())  # Monday
@@ -101,3 +101,4 @@ def edit_post(request, post_id):
 
     form = PostEditForm(instance=post)
     return render(request, "posts/edit_post.html", {"form": form, "post": post})
+

@@ -22,9 +22,11 @@ from datetime import datetime, timedelta
 import calendar
 
 from posts.models import Post
+from posts.services.gemini_moderation import moderate_post
 from .models import Follow, Like, Comment
 from users.models import WorkoutCompletion
 
+from django.http import JsonResponse
 
 
 def _week_bounds(local_day):
@@ -385,6 +387,10 @@ def add_comment(request, post_id):
     content = request.POST.get('content', '').strip()
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
+    
+    allowed, reason = moderate_post(content)
+    if not allowed:
+        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"})
  
     comment = Comment.objects.create(
         user=request.user,
