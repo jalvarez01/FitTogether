@@ -70,12 +70,18 @@ pip install -r requirements.txt
 This will install:
 
 - asgiref
+- certifi
+- charset-normalizer
 - Django
 - gunicorn
+- idna
 - packaging
 - pillow
+- python-dotenv
+- requests
 - sqlparse
 - typing_extensions
+- urllib3
 
 ### Step 4: Create a Superuser (Optional)
 
@@ -176,4 +182,4 @@ python manage.py migrate --run-syncdb
 
 ---
 
-**Last updated:** February 2026
+**Last updated:** April 2026
