@@ -5,9 +5,24 @@ from datetime import timedelta
 
 
 class Post(models.Model):
+    MODERATION_APPROVED = 'approved'
+    MODERATION_PENDING = 'pending'
+    MODERATION_REJECTED = 'rejected'
+
+    MODERATION_CHOICES = [
+        (MODERATION_APPROVED, 'Approved'),
+        (MODERATION_PENDING, 'Pending'),
+        (MODERATION_REJECTED, 'Rejected'),
+    ]
+
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
     content = models.TextField(blank=True)
     image = models.ImageField(upload_to="posts/", blank=True, null=True)
+    moderation_status = models.CharField(
+        max_length=10,
+        choices=MODERATION_CHOICES,
+        default=MODERATION_APPROVED,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

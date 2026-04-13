@@ -1,13 +1,29 @@
 import base64
 import json
+import logging
 import mimetypes
-import re
 from typing import Tuple, Optional, Dict, Any
 
 import requests
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
+
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+# ── Mensajes amigables ──────────────────────────────────────────────────────
+USER_MSG_HATE = "Your post was blocked because it may contain hateful or harassing content."
+USER_MSG_SEXUAL = "Your post was blocked because it may contain inappropriate sexual content."
+USER_MSG_DANGER = "Your post was blocked because it may contain dangerous or harmful content."
+USER_MSG_GENERIC = "Your post was blocked because it violates our community guidelines."
+USER_MSG_EMPTY = "Your post must have some content — either text or an image."
+USER_MSG_BLOCKED_TERM = "Your post contains a term that is not allowed."
+USER_MSG_PENDING = "Your post was saved and is waiting to be moderated. It will be visible to others once approved."
+
+# Estados posibles
+APPROVED = "approved"
+REJECTED = "rejected"
+PENDING = "pending"
 
 
 def _safe_settings():
@@ -32,7 +48,6 @@ def _extract_first_json_object(s: str) -> Optional[str]:
     if start == -1:
         return None
 
-    # Busca el primer bloque JSON balanceado
     depth = 0
     for i in range(start, len(s)):
         ch = s[i]
@@ -43,31 +58,26 @@ def _extract_first_json_object(s: str) -> Optional[str]:
             if depth == 0:
                 return s[start : i + 1]
 
-    # Si quedó incompleto, devolvemos desde el primer "{"
     return s[start:]
 
 
 def _parse_json_maybe_truncated(raw: str) -> Optional[Dict[str, Any]]:
     cleaned = _strip_code_fences(raw)
 
-    # 1) intento directo
     try:
         return json.loads(cleaned)
     except Exception:
         pass
 
-    # 2) extraer primer objeto JSON
     json_str = _extract_first_json_object(cleaned)
     if not json_str:
         return None
 
-    # 3) parse
     try:
         return json.loads(json_str)
     except Exception:
         pass
 
-    # 4) si está cortado, cerramos llaves
     if json_str.count("{") > json_str.count("}"):
         fixed = json_str + ("}" * (json_str.count("{") - json_str.count("}")))
         try:
@@ -78,23 +88,51 @@ def _parse_json_maybe_truncated(raw: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tuple[bool, str]:
+def _mark_pending(internal_reason: str) -> Tuple[str, str]:
+    """API no disponible → el post se guarda como pendiente."""
+    logger.warning("Moderation unavailable (post saved as pending): %s", internal_reason)
+    return PENDING, USER_MSG_PENDING
+
+
+def _friendly_rejection(reason_raw: str) -> Tuple[str, str]:
+    """Traduce la razón de Gemini a un mensaje legible."""
+    reason_lower = reason_raw.lower()
+
+    if any(w in reason_lower for w in ("hate", "harassment", "discriminat", "insult", "offensive")):
+        return REJECTED, USER_MSG_HATE
+    elif any(w in reason_lower for w in ("sexual", "explicit", "nude", "nsfw")):
+        return REJECTED, USER_MSG_SEXUAL
+    elif any(w in reason_lower for w in ("danger", "harm", "self-harm", "violence", "illegal", "drug")):
+        return REJECTED, USER_MSG_DANGER
+    else:
+        return REJECTED, USER_MSG_GENERIC
+
+
+def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tuple[str, str]:
+    """
+    Retorna (status, message) donde status es:
+    - "approved"  → el post se publica normalmente
+    - "rejected"  → el post se bloquea, message tiene la razón amigable
+    - "pending"   → la API no respondió, el post se guarda pendiente de moderación
+    """
     api_key = (getattr(settings, "GEMINI_API_KEY", "") or "").strip()
     model = (getattr(settings, "GEMINI_MODEL_TEXT", "gemini-2.5-flash") or "").strip()
 
-    if not api_key:
-        return False, "Moderation service is not configured (missing GEMINI_API_KEY)."
-
     text = (content or "").strip()
     if not text and not image_file:
-        return False, "Post is empty."
+        return REJECTED, USER_MSG_EMPTY
 
-    # Hard local rule para pruebas: SIEMPRE bloquea melocoton
-    if "melocoton" in text.lower():
-        return False, "Blocked term: melocoton (testing rule)."
-
+    # ── Reglas locales (no dependen de la API) ──────────────────────────────
     blocked_terms = ["melocoton"]
+    for term in blocked_terms:
+        if term in text.lower():
+            return REJECTED, USER_MSG_BLOCKED_TERM
 
+    # ── Sin API key → pendiente ─────────────────────────────────────────────
+    if not api_key:
+        return _mark_pending("GEMINI_API_KEY not configured")
+
+    # ── Construir request a Gemini ──────────────────────────────────────────
     moderation_prompt = (
         "You are FitTogether Moderation.\n"
         "Decide if a post is allowed.\n\n"
@@ -105,7 +143,8 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
         "- Sexual content involving minors\n"
         "- Explicit sexual content\n"
         "- Self-harm instructions\n"
-        "- Illegal wrongdoing instructions\n\n"
+        "- Illegal wrongdoing instructions\n"
+        "- Insults, profanity, or abusive language directed at others\n\n"
         "Return ONLY JSON in ONE LINE (no markdown/backticks):\n"
         '{"allow": true/false, "reason": "short_reason"}\n'
         "Keep reason under 60 chars.\n"
@@ -123,7 +162,6 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
 
         raw = image_file.read()
 
-        # devolver puntero
         try:
             if pos is not None:
                 image_file.seek(pos)
@@ -152,6 +190,7 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
 
     url = GEMINI_ENDPOINT.format(model=model)
 
+    # ── Llamar a la API ─────────────────────────────────────────────────────
     try:
         r = requests.post(
             url,
@@ -162,53 +201,50 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 15) -> Tupl
             },
             timeout=timeout_s,
         )
-    except requests.RequestException:
-        return False, "Moderation service is unavailable. Try again."
+    except requests.RequestException as e:
+        return _mark_pending(f"Network error: {e}")
 
     if r.status_code != 200:
-        return False, "Moderation service error ({}): {}".format(r.status_code, r.text[:300])
+        return _mark_pending(f"API returned status {r.status_code}")
 
-    data = r.json()
+    # ── Parsear respuesta ───────────────────────────────────────────────────
+    try:
+        data = r.json()
+    except Exception:
+        return _mark_pending("API returned non-JSON response")
 
-    # Prompt bloqueado antes de generar
     prompt_feedback = data.get("promptFeedback") or {}
     if prompt_feedback.get("blockReason"):
-        return False, "Post blocked by safety filters (prompt blocked)."
+        return REJECTED, USER_MSG_GENERIC
 
     candidates = data.get("candidates") or []
     if not candidates:
-        return False, "Post blocked by safety filters (no candidates)."
+        return REJECTED, USER_MSG_GENERIC
 
     c0 = candidates[0] or {}
 
-    # Candidate bloqueado por SAFETY / RECITATION
     finish_reason = (c0.get("finishReason") or "").upper()
     if finish_reason in {"SAFETY", "RECITATION"}:
-        return False, "Post blocked by safety filters ({})".format(finish_reason.lower())
+        return REJECTED, USER_MSG_GENERIC
 
-    #  leer texto si existe
     content_obj = c0.get("content") or {}
     parts_out = content_obj.get("parts") or []
     text_out = "".join(p.get("text", "") for p in parts_out).strip()
 
     if not text_out:
-        safety_ratings = c0.get("safetyRatings") or []
-        if safety_ratings:
-            return False, "Post blocked by safety filters (no output)."
-        return False, "Moderation service returned an empty response."
+        return _mark_pending("API returned empty text output")
 
-    # Parse robusto del JSON (aunque venga truncado)
     parsed = _parse_json_maybe_truncated(text_out)
     if not parsed:
-        preview = _strip_code_fences(text_out)[:200].replace("\n", " ")
-        return False, "Moderation service returned an invalid response: {}".format(preview)
+        return _mark_pending(f"API returned unparseable JSON: {text_out[:200]}")
 
     allow_value = parsed.get("allow", parsed.get("allowed", None))
     if allow_value is None:
-        preview = _strip_code_fences(text_out)[:200].replace("\n", " ")
-        return False, "Moderation service returned an invalid response (missing allow/allowed): {}".format(preview)
+        return _mark_pending(f"API JSON missing 'allow' key: {text_out[:200]}")
 
-    allow = bool(allow_value)
-    reason = (parsed.get("reason") or "").strip() or ("OK" if allow else "Not allowed")
+    if bool(allow_value):
+        return APPROVED, "OK"
 
-    return (True, "OK") if allow else (False, reason)
+    # ── Rechazado por Gemini → mensaje amigable ─────────────────────────────
+    reason_raw = parsed.get("reason") or ""
+    return _friendly_rejection(reason_raw)

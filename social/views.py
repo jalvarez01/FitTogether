@@ -20,21 +20,23 @@ from django.utils import timezone
 from django.contrib import messages
 
 from posts.models import Post
-from posts.services.gemini_moderation import moderate_post
+from posts.services.gemini_moderation import moderate_post, APPROVED, REJECTED, PENDING
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 
 
 @login_required(login_url="users:register")
 def feed_view(request):
-    # Usuarios que yo sigo CON amistad aceptada
     following_ids = Follow.objects.filter(
         follower=request.user,
         status='accepted',
     ).values_list("following_id", flat=True)
 
-    # Si todavía no sigue a nadie, muestra al menos los posts del usuario
-    base_filter = Q(author__in=following_ids) | Q(author=request.user)
+    # Posts aprobados de amigos + propios (aprobados y pendientes)
+    base_filter = (
+        (Q(author__in=following_ids) & Q(moderation_status=Post.MODERATION_APPROVED))
+        | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
+    )
 
     posts = (
         Post.objects
@@ -51,8 +53,8 @@ def feed_view(request):
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
-    # Posting rules (for UI):
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(author=request.user, created_at__date=today).exists()
 
@@ -63,7 +65,6 @@ def feed_view(request):
     training_days_remaining = max(0, weekly_limit - posts_this_week)
     can_post = (weekly_limit >= 1) and (posts_this_week < weekly_limit) and (not already_posted_today)
 
-    # El calendario/streak ya lo provee el context processor streak_calendar
     ctx = {
         "posts": posts,
         "can_post": can_post,
@@ -77,9 +78,6 @@ def feed_view(request):
 
 @login_required
 def search_users(request):
-    """
-    Busca usuarios por username
-    """
     query = request.GET.get('q', '').strip()
     results = []
 
@@ -115,7 +113,6 @@ def search_users(request):
                 'has_pending_received': user.id in pending_received_ids,
             })
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "query": query,
         "results": results,
@@ -163,10 +160,6 @@ def toggle_follow(request, user_id):
 @login_required
 @require_POST
 def toggle_like(request, post_id):
-    """
-    Dar o quitar like a un post.
-    Solo permitido si el usuario es el autor o tiene amistad aceptada.
-    """
     post = get_object_or_404(Post, id=post_id)
 
     is_own = post.author == request.user
@@ -225,8 +218,14 @@ def user_profile(request, username):
         status='pending'
     ).exists()
 
+    # Si es mi perfil, muestro también los pendientes; si es otro, solo aprobados
+    if profile_user == request.user:
+        post_filter = Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING])
+    else:
+        post_filter = Q(moderation_status=Post.MODERATION_APPROVED)
+
     posts = Post.objects.filter(
-        author=profile_user
+        Q(author=profile_user) & post_filter
     ).annotate(
         likes_count=Count("like", distinct=True),
         comments_count=Count("comment", distinct=True)
@@ -234,12 +233,12 @@ def user_profile(request, username):
 
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
     followers_count = Follow.objects.filter(following=profile_user, status='accepted').count()
     following_count = Follow.objects.filter(follower=profile_user, status='accepted').count()
     posts_count = posts.count()
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "profile_user": profile_user,
         "is_following": is_following,
@@ -274,9 +273,14 @@ def add_comment(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
 
-    allowed, reason = moderate_post(content)
-    if not allowed:
-        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"})
+    status, reason = moderate_post(content)
+
+    if status == REJECTED:
+        return JsonResponse({"success": False, "error": reason})
+
+    if status == PENDING:
+        # Para comentarios, si la API no responde simplemente dejamos pasar
+        pass
 
     comment = Comment.objects.create(
         user=request.user,
@@ -301,9 +305,6 @@ def add_comment(request, post_id):
 
 @login_required
 def friend_requests(request):
-    """
-    Muestra las solicitudes de amistad pendientes
-    """
     received_requests = Follow.objects.filter(
         following=request.user,
         status='pending'
@@ -319,7 +320,6 @@ def friend_requests(request):
         status='accepted'
     ).select_related('following')
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "received_requests": received_requests,
         "sent_requests": sent_requests,
@@ -342,13 +342,11 @@ def accept_friend_request(request, request_id):
     friend_request.status = 'accepted'
     friend_request.save()
 
-    # Crear relación inversa si no existe
     Follow.objects.get_or_create(
         follower=request.user,
         following=friend_request.follower,
         defaults={'status': 'accepted'}
     )
-    # Si ya existía pendiente, actualizarla
     Follow.objects.filter(
         follower=request.user,
         following=friend_request.follower,
@@ -371,10 +369,6 @@ def accept_friend_request(request, request_id):
 @login_required
 @require_POST
 def reject_friend_request(request, request_id):
-    """
-    Rechazar/cancelar una solicitud de amistad.
-    Funciona tanto si eres el receptor (rechazar) como el emisor (cancelar).
-    """
     friend_request = Follow.objects.filter(
         id=request_id,
         status='pending'
