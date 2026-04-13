@@ -2,310 +2,506 @@
 {% load static %}
 
 {% block body_class %}no-sidebar no-right{% endblock %}
-{% block nav_profile_active %}{% endblock %}
 {% block page_title %}{% endblock %}
 
 {% block content %}
 <style>
-  .profile-page{
-    display:flex;
-    gap: 22px;
-    align-items: stretch;
+  /* ── Layout ── */
+  .profile-topbar {
+    display: grid;
+    grid-template-columns: 255px 1fr;
+    align-items: center;
+    margin-bottom: 10px;
   }
+  .top-title { font-weight: 700; font-size: 19.5px; color: #000; }
+  .top-title.left { display: flex; align-items: center; gap: 10px; }
+  .top-title .count { font-size: 12px; color: #6b7280; font-weight: 700; margin-top: 4px; }
+  .top-title.center { text-align: center; }
 
-  .profile-topbar{
-  display:grid;
-  grid-template-columns: 255px 1fr; /* igual que friends-panel */
-  align-items:center;
-  margin-bottom: 10px;
-}
-
-.top-title{
-  font-weight: 700;
-  font-size: 19.5px;
-  color:#000000;
-}
-
-.top-title.left{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-}
-
-.top-title .count{
-  font-size: 12px;
-  color:#6b7280;
-  font-weight: 700;
-  margin-top: 4px;
-}
-
-.top-title.center{
-  text-align:center;
-}
-
-  /* Friends mini panel a la izquierda (solo UI) */
-  .friends-panel{
-    width: 255px;
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    color: #030303;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 12px;
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.15s;
   }
-  .friends-card{
+  .back-btn:hover { opacity: 1; }
+  .back-btn svg { width: 16px; height: 16px; }
+
+  .profile-page { display: flex; gap: 22px; align-items: stretch; }
+
+  /* ── Friends panel ── */
+  .friends-panel { width: 255px; flex-shrink: 0; }
+  .friends-card {
     border-radius: 18px;
     background: #fff;
     border: none;
-    box-shadow:none;
+    box-shadow: none;
     padding: 14px;
   }
-  .friends-title{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    font-weight: 800;
-    margin-bottom: 10px;
-  }
-  .friends-count{
-    font-size: 12px;
-    color:#6b7280;
-    font-weight:700;
-  }
-
-  .friends-list{
-    display:flex;
-    flex-direction:column;
+  .friends-list {
+    display: flex;
+    flex-direction: column;
     gap: 18px;
     max-height: calc(100vh - 260px);
-    overflow-y:auto;
+    overflow-y: auto;
     padding-right: 6px;
-    scrollbar-width: auto;
-    scrollbar-color: rgba(0,0,0,.22) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,.15) transparent;
   }
+  .friends-list::-webkit-scrollbar { width: 6px; }
+  .friends-list::-webkit-scrollbar-thumb { background: rgba(151,151,151,0.25); border-radius: 999px; }
 
-  .friends-list::-webkit-scrollbar{ width: 10px; }
-  .friends-list::-webkit-scrollbar-track{
-    background: transparent;
-  }
-
-  .friends-list::-webkit-scrollbar-thumb{
-    background: rgba(151, 151, 151, 0.2);
-    border-radius: 999px;
-  }
-    
-  .friends-list::-webkit-scrollbar-thumb:hover{
-    background: rgba(172, 172, 172, 0.28);
-  }
-
-  .friend-row{
-    display:flex;
-    align-items:center;
+  .friend-row {
+    display: flex;
+    align-items: center;
     gap: 12px;
     font-weight: 700;
     font-size: 14px;
-    color:#303030;
+    color: #303030;
     letter-spacing: .3px;
+    text-decoration: none;
+    transition: opacity 0.15s;
   }
-  .friend-ava{
-    width: 46px; 
-    height:46px;
-    border-radius:999px;
-    background:#d1d5db;
+  .friend-row:hover { opacity: 0.7; }
+  .friend-ava {
+    width: 46px; height: 46px;
+    border-radius: 999px;
+    background: #d1d5db;
+    overflow: hidden;
+    flex-shrink: 0;
   }
+  .friend-ava img { width: 100%; height: 100%; object-fit: cover; }
 
-  /* Profile main */
-  .profile-main{
-    flex:1;
-    min-width: 520px;
-  }
+  /* ── Profile main ── */
+  .profile-main { flex: 1; min-width: 0; }
 
-  .profile-header{
-    background:#efeff1;
+  .profile-header {
     border-radius: 18px;
     height: 170px;
     position: relative;
-    overflow: visible;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
   }
 
-  .edit-pen{
-    position:absolute;
-    right: 16px;
-    top: 16px;
-    width: 34px;
-    height: 34px;
+  /* ── Edit pen (banner) ── */
+  .edit-pen {
+    position: absolute;
+    right: 16px; top: 16px;
+    width: 34px; height: 34px;
     border-radius: 999px;
     border: none;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    transition: transform .2s ease, opacity .2s ease;
+    background: rgba(255,255,255,0.85);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .2s, opacity .2s;
+    z-index: 5;
   }
-  .edit-pen:hover{ 
-    transform: scale(1.12);
-    opacity: .85;
-  }
+  .edit-pen:hover { transform: scale(1.1); opacity: .85; }
+  .edit-pen img { width: 18px; height: 18px; object-fit: contain; opacity: .85; }
 
-  .edit-pen img{
-    width: 21px;
-    height: 21px;
-    object-fit:contain;
-    opacity:.9;
-    transition: transform .2s ease;
+  /* ── Banner color picker ── */
+  .banner-picker {
+    position: absolute;
+    right: 16px; top: 58px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: none;
+    gap: 8px;
+    z-index: 20;
+    flex-direction: column;
   }
+  .banner-picker.open { display: flex; }
+  .banner-picker-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .banner-colors { display: flex; gap: 8px; }
+  .color-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s;
+  }
+  .color-dot:hover { transform: scale(1.15); }
+  .color-dot.selected { border-color: #030303; }
 
-  .profile-meta{
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
+  /* ── Profile meta ── */
+  .profile-meta {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 14px;
-    margin-top: -40px; /* avatar “sale” del header como figma */
+    margin-top: -40px;
     padding: 0 10px;
     z-index: 10;
     position: relative;
   }
+  .meta-left { display: flex; align-items: flex-end; gap: 14px; }
 
-  .meta-left{
-    display:flex;
-    align-items:flex-end;
-    gap: 14px;
-  }
-
-  .big-avatar{
-    width: 92px;
-    height: 92px;
+  /* ── Avatar ── */
+  .big-avatar-wrap { position: relative; flex-shrink: 0; }
+  .big-avatar {
+    width: 92px; height: 92px;
     border-radius: 999px;
-    background:#d1d5db;
+    background: #d1d5db;
     border: 6px solid #fff;
-    overflow:hidden;
-    flex: 0 0 auto;
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity .2s;
   }
-  .big-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .big-avatar:hover { opacity: 0.85; }
+  .big-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-  .name-block{
-    padding-bottom: 10px;
+  /* ── Avatar menu ── */
+  .avatar-menu {
+    position: absolute;
+    top: 100px; left: 0;
+    background: #fff;
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 30;
+    min-width: 160px;
   }
-  .name-block .name{
-    font-weight: 700;
-    font-size: 18px;
-    color: #202020;
-    margin-bottom: 2px;
-  }
-  .name-block .handle{
+  .avatar-menu.open { display: flex; }
+  .avatar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
     font-size: 13px;
-    color:#6b7280;
-    font-weight:600;
-    letter-spacing: .2px;
+    font-weight: 600;
+    color: #111827;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background .15s;
+  }
+  .avatar-menu-item:hover { background: #f3f4f6; }
+  .avatar-menu-item.danger { color: #ef4444; }
+  .avatar-menu-item.danger:hover { background: #fee2e2; }
+  .avatar-menu-item svg { width: 15px; height: 15px; opacity: .7; flex-shrink: 0; }
+
+  /* ── Name block ── */
+  .name-block { padding-bottom: 10px; }
+  .name-block .name { font-weight: 700; font-size: 18px; color: #202020; margin-bottom: 2px; }
+  .name-block .handle { font-size: 13px; color: #6b7280; font-weight: 600; }
+
+  /* ── Bio ── */
+  .bio-block {
+    margin: 12px 10px 0;
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.5;
+    min-height: 20px;
+  }
+  .bio-text { cursor: pointer; display: inline; }
+  .bio-text:hover { text-decoration: underline; text-decoration-style: dashed; }
+  .bio-placeholder { color: #9ca3af; font-style: italic; cursor: pointer; }
+  .bio-placeholder:hover { color: #6b7280; }
+
+  .bio-edit-form { display: none; margin: 12px 10px 0; }
+  .bio-edit-form.open { display: block; }
+  .bio-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: border-color .2s;
+    box-sizing: border-box;
+  }
+  .bio-textarea:focus { border-color: #a8a9b1; }
+  .bio-save-btn {
+    margin-top: 6px;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: none;
+    background: #030303;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .bio-cancel-btn {
+    margin-top: 6px;
+    margin-left: 6px;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
   }
 
-  .meta-actions{
-    display:flex;
-    align-items:center;
+  /* ── Actions ── */
+  .meta-actions {
+    display: flex;
+    align-items: center;
     gap: 10px;
     padding-bottom: 14px;
   }
-
-  .btn-pill{
+  .btn-pill {
     height: 30px;
     padding: 0 14px;
     border-radius: 999px;
     border: none;
-    background: #000000;
+    background: #000;
     color: #fff;
     font-weight: 600;
-    letter-spacing: .5px;
     font-size: 13px;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
+    letter-spacing: .5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
     gap: 8px;
-    transition: transform .2s ease, box-shadow .2s ease;
+    transition: opacity .2s, box-shadow .2s;
   }
-  .btn-pill:hover{ 
-    opacity:.92; 
-    box-shadow: 0 6px 18px rgba(5, 5, 5, 0.15);
-  }
-
-  .btn-icon{
-    width: 34px;
-    height: 34px;
+  .btn-pill:hover { opacity: .88; box-shadow: 0 6px 18px rgba(5,5,5,0.15); }
+  .btn-icon {
+    width: 34px; height: 34px;
     border-radius: 999px;
     border: none;
     background: #fff;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity .2s;
   }
-  .btn-icon:hover{ opacity:.92; }
-  .btn-icon img{
-    width: 28px;
-    height: 28px;
-    object-fit:contain;
-    opacity:.9;
-  }
+  .btn-icon:hover { opacity: .8; }
+  .btn-icon img { width: 28px; height: 28px; object-fit: contain; opacity: .85; }
 
-  /* Grid posts (pastel) */
-  .grid{
+  /* ── Post modal (composer) ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.25);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 22px;
+    width: min(520px, 100%);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal-title { font-weight: 700; font-size: 16px; margin-bottom: 14px; }
+  .modal-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color .2s;
+  }
+  .modal-textarea:focus { border-color: #a8a9b1; }
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+  .modal-file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #030303;
+    cursor: pointer;
+  }
+  .modal-file-label img { width: 16px; height: 16px; opacity: .8; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-cancel {
+    height: 32px; padding: 0 14px;
+    border-radius: 999px; border: 1px solid #e5e7eb;
+    background: #fff; color: #6b7280;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .modal-submit {
+    height: 32px; padding: 0 16px;
+    border-radius: 999px; border: none;
+    background: #030303; color: #fff;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .modal-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: none;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0 0 10px;
+  }
+  .filter-bar.open { display: flex; }
+  .filter-chip {
+    height: 28px; padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #374151;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .filter-chip.active { background: #030303; color: #fff; border-color: #030303; }
+
+  /* ── Posts grid ── */
+  .grid {
     margin-top: 18px;
-    display:grid;
+    display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
   }
-  .tile{
+  .tile {
     height: 210px;
     border-radius: 14px;
-    overflow:hidden;
-    border:none;
-    box-shadow:none;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 14px;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
   }
-  .tile.blue{ background:#eaf0ff; }
-  .tile.pink{ background:#fde9fb; }
-  .tile.green{ background:#eaf9ee; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+  .tile.blue { background: #eaf0ff; }
+  .tile.pink { background: #fde9fb; }
+  .tile.green { background: #eaf9ee; }
+  .tile.lilac { background: #f1eaff; }
 
-  .tile .ph{
-    width: 44px;
-    height: 44px;
-    object-fit:contain;
-    opacity:.9;
-  }
-
-  .tile .text{
-    font-size: 12px;
-    color:#111827;
-    line-height: 1.35;
-    font-weight: 600;
-    text-align:left;
-    background: rgba(255,255,255,.55);
-    border-radius: 12px;
-    padding: 12px;
+  .tile .ph { width: 44px; height: 44px; object-fit: contain; opacity: .7; }
+  .tile .post-img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; border-radius: 14px; }
+  .tile .text {
+    font-size: 12px; color: #111827;
+    line-height: 1.4; font-weight: 500;
+    background: rgba(255,255,255,.6);
+    border-radius: 10px;
+    padding: 10px 12px;
     width: 100%;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+  }
+  .tile-stats {
+    position: absolute;
+    bottom: 10px; right: 10px;
+    display: flex; gap: 6px;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .tile:hover .tile-stats { opacity: 1; }
+  .tile-stat {
+    background: rgba(255,255,255,.85);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #374151;
   }
 
-  /* Responsive mini */
-  @media (max-width: 1050px){
-    .friends-panel{ display:none; }
-    .profile-main{ min-width: auto; }
+  .empty-posts {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+
+  /* Hidden file input */
+  #avatar-file-input { display: none; }
+
+  @media (max-width: 1050px) {
+    .friends-panel { display: none; }
+    .profile-main { min-width: auto; }
+  }
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 
+<!-- Hidden file input for avatar -->
+<input type="file" id="avatar-file-input" accept="image/*">
+
+<!-- Back button -->
+<a href="{% url 'social:feed' %}" class="back-btn">
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M10 3L5 8l5 5"/>
+  </svg>
+  Back to feed
+</a>
+
 <div class="profile-topbar">
-  <div class="top-title left">Friends <span class="count">6</span></div>
+  <div class="top-title left">Friends <span class="count">{{ friends_count }}</span></div>
   <div class="top-title center">Profile</div>
 </div>
 
 <div class="profile-page">
 
-  <!-- Friends panel (UI) -->
+  <!-- Friends panel -->
   <aside class="friends-panel">
     <div class="friends-card">
-
       <div class="friends-list">
-        <div class="friend-row"><div class="friend-ava"></div><div>User01</div></div>
-        <div class="friend-row"><div class="friend-ava"></div><div>User02</div></div>
-        <div class="friend-row"><div class="friend-ava"></div><div>User03</div></div>
-        <div class="friend-row"><div class="friend-ava"></div><div>User04</div></div>
-        <div class="friend-row"><div class="friend-ava"></div><div>User05</div></div>
-        <div class="friend-row"><div class="friend-ava"></div><div>User06</div></div>
+        {% for follow in friends %}
+          <a href="{% url 'social:user_profile' follow.following.username %}" class="friend-row">
+            <div class="friend-ava">
+              {% if follow.following.profile.profile_picture %}
+                <img src="{{ follow.following.profile.profile_picture.url }}" alt="{{ follow.following.username }}">
+              {% else %}
+                <img src="{% static 'images/profile_default.jpg' %}" alt="{{ follow.following.username }}">
+              {% endif %}
+            </div>
+            <div>{{ follow.following.username }}</div>
+          </a>
+        {% empty %}
+          <div style="font-size:13px; color:#9ca3af; padding: 10px 0;">No friends yet</div>
+        {% endfor %}
       </div>
     </div>
   </aside>
@@ -313,55 +509,297 @@
   <!-- Profile main -->
   <section class="profile-main">
 
-    <div class="profile-header">
-      <button class="edit-pen" type="button" aria-label="Edit header">
+    <!-- Banner -->
+    <div class="profile-header" id="profile-banner" style="background-color: {{ profile.banner_color|default:'#efeff1' }};">
+      <button class="edit-pen" type="button" id="banner-edit-btn" aria-label="Edit banner color">
         <img src="{% static 'icons/edit.png' %}" alt="edit">
       </button>
+
+      <!-- Color picker -->
+      <div class="banner-picker" id="banner-picker">
+        <div class="banner-picker-label">Banner color</div>
+        <div class="banner-colors">
+          <div class="color-dot {% if profile.banner_color == '#eaf0ff' %}selected{% endif %}" style="background:#eaf0ff;" data-color="#eaf0ff"></div>
+          <div class="color-dot {% if profile.banner_color == '#fde9fb' %}selected{% endif %}" style="background:#fde9fb;" data-color="#fde9fb"></div>
+          <div class="color-dot {% if profile.banner_color == '#eaf9ee' %}selected{% endif %}" style="background:#eaf9ee;" data-color="#eaf9ee"></div>
+          <div class="color-dot {% if profile.banner_color == '#efeff1' or not profile.banner_color %}selected{% endif %}" style="background:#efeff1;" data-color="#efeff1"></div>
+        </div>
+      </div>
     </div>
 
+    <!-- Avatar + meta -->
     <div class="profile-meta">
       <div class="meta-left">
-        <div class="big-avatar">
-          <img src="{% static 'images/profile_default.jpg' %}" alt="profile">
+        <div class="big-avatar-wrap">
+          <div class="big-avatar" id="avatar-trigger">
+            {% if profile.profile_picture %}
+              <img id="avatar-img" src="{{ profile.profile_picture.url }}" alt="profile">
+            {% else %}
+              <img id="avatar-img" src="{% static 'images/profile_default.jpg' %}" alt="profile">
+            {% endif %}
+          </div>
+
+          <!-- Avatar menu -->
+          <div class="avatar-menu" id="avatar-menu">
+            <button class="avatar-menu-item" id="avatar-upload-btn">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 2v8M4 6l4-4 4 4"/><path d="M2 13h12"/></svg>
+              Upload photo
+            </button>
+            <button class="avatar-menu-item danger" id="avatar-delete-btn">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 4h10M6 4V2h4v2M5 4v9h6V4"/></svg>
+              Remove photo
+            </button>
+          </div>
         </div>
 
         <div class="name-block">
-          <div class="name">
-            {% if user.is_authenticated %}
-                {{ user.username }}
-            {% else %}
-                User
-            {% endif %}
-          </div>
-
-          <div class="handle">
-            {% if user.is_authenticated %}
-                @{{ user.username }}
-            {% else %}
-                @user
-            {% endif %}
-          </div>
+          <div class="name">{{ user.username }}</div>
+          <div class="handle">@{{ user.username }}</div>
         </div>
       </div>
 
       <div class="meta-actions">
-        <button class="btn-pill" type="button">
-          + Post
-        </button>
-
-        <button class="btn-icon" type="button" aria-label="Filter">
+        <button class="btn-pill" id="open-post-modal" type="button">+ Post</button>
+        <button class="btn-icon" type="button" id="filter-toggle" aria-label="Filter">
           <img src="{% static 'icons/filter.png' %}" alt="filter">
         </button>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="tile blue"><img class="ph" src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'"></div>
-      <div class="tile pink"><div class="text">Lorem ipsum dolor sit amet. Ut voluptas rerum aut adipisci molestiae ut delectus eveniet est vitae repellendus non neque ratione…</div></div>
-      <div class="tile green"><img class="ph" src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'"></div>
+    <!-- Bio -->
+    <div class="bio-block" id="bio-display" style="display: flex; align-items: flex-start; gap: 8px;">
+      <div style="flex: 1;">
+        {% if profile.bio %}
+          <span class="bio-text" id="bio-text" onclick="openBioEdit()">{{ profile.bio }}</span>
+        {% else %}
+          <span class="bio-placeholder" onclick="openBioEdit()">Add a bio...</span>
+        {% endif %}
+      </div>
+      <button onclick="openBioEdit()" type="button" title="Edit bio"
+              style="background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 8px;
+                     cursor: pointer; color: #6b7280; font-size: 12px; white-space: nowrap;
+                     transition: all 0.15s; display: flex; align-items: center; gap: 4px;"
+              onmouseover="this.style.background='#f3f4f6'; this.style.color='#030303';"
+              onmouseout="this.style.background='none'; this.style.color='#6b7280';">
+        ✏️ Edit
+      </button>
+    </div>
+    <div class="bio-edit-form" id="bio-edit-form">
+      <textarea class="bio-textarea" id="bio-textarea" rows="3" maxlength="300" placeholder="Tell us about yourself...">{{ profile.bio }}</textarea>
+      <div>
+        <button class="bio-save-btn" onclick="saveBio()">Save</button>
+        <button class="bio-cancel-btn" onclick="closeBioEdit()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="text">Text</button>
+      <button class="filter-chip" data-filter="image">With image</button>
+    </div>
+
+    <!-- Posts grid -->
+    <div class="grid" id="posts-grid">
+      {% for post in posts %}
+        <div class="tile {% cycle 'blue' 'pink' 'green' 'lilac' %}"
+             data-has-image="{% if post.image %}true{% else %}false{% endif %}">
+          {% if post.image %}
+            <img class="post-img" src="{{ post.image.url }}" alt="">
+          {% else %}
+            {% if post.content %}
+              <div class="text">{{ post.content }}</div>
+            {% else %}
+              <img class="ph" src="{% static 'icons/image.png' %}" alt="" onerror="this.style.display='none'">
+            {% endif %}
+          {% endif %}
+          <div class="tile-stats">
+            <div class="tile-stat">♥ {{ post.likes_count }}</div>
+            <div class="tile-stat">💬 {{ post.comments_count }}</div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="empty-posts">
+          <p>No posts yet. Start sharing your workouts! 🏋️</p>
+        </div>
+      {% endfor %}
     </div>
 
   </section>
 </div>
+
+<!-- Post modal -->
+<div class="modal-overlay" id="post-modal">
+  <div class="modal-box">
+    <div class="modal-title">New post</div>
+    <form id="post-form" method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <textarea class="modal-textarea" name="content" rows="4"
+                placeholder="Share your workout..." required></textarea>
+      <div class="modal-footer">
+        <label class="modal-file-label">
+          <img src="{% static 'icons/image.png' %}" alt="">
+          Add image
+          <input type="file" name="image" hidden accept="image/*">
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="modal-cancel" onclick="closePostModal()">Cancel</button>
+          <button type="submit" class="modal-submit" id="post-submit-btn">Post</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const csrftoken = (function() {
+  let v = null;
+  if (document.cookie) document.cookie.split(';').forEach(c => {
+    c = c.trim();
+    if (c.startsWith('csrftoken=')) v = decodeURIComponent(c.slice(10));
+  });
+  return v;
+})();
+
+function postJson(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+    body: body,
+  }).then(r => r.json());
+}
+
+// ── Banner ──────────────────────────────────────────────────────────────────
+document.getElementById('banner-edit-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  document.getElementById('banner-picker').classList.toggle('open');
+});
+
+document.querySelectorAll('.color-dot').forEach(dot => {
+  dot.addEventListener('click', function() {
+    const color = this.dataset.color;
+    const fd = new FormData();
+    fd.append('color', color);
+    postJson("{% url 'users:update_banner' %}", fd).then(data => {
+      if (data.success) {
+        document.getElementById('profile-banner').style.backgroundColor = color;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+        this.classList.add('selected');
+        document.getElementById('banner-picker').classList.remove('open');
+      }
+    });
+  });
+});
+
+// ── Avatar ───────────────────────────────────────────────────────────────────
+document.getElementById('avatar-trigger').addEventListener('click', function(e) {
+  e.stopPropagation();
+  document.getElementById('avatar-menu').classList.toggle('open');
+});
+
+document.getElementById('avatar-upload-btn').addEventListener('click', function() {
+  document.getElementById('avatar-menu').classList.remove('open');
+  document.getElementById('avatar-file-input').click();
+});
+
+document.getElementById('avatar-file-input').addEventListener('change', function() {
+  if (!this.files.length) return;
+  const fd = new FormData();
+  fd.append('action', 'upload');
+  fd.append('picture', this.files[0]);
+  postJson("{% url 'users:update_avatar' %}", fd).then(data => {
+    if (data.success && data.picture_url) {
+      document.getElementById('avatar-img').src = data.picture_url;
+      // Update sidebar avatar too
+      const sidebarAvatar = document.querySelector('.avatar img');
+      if (sidebarAvatar) sidebarAvatar.src = data.picture_url;
+    }
+  });
+  this.value = '';
+});
+
+document.getElementById('avatar-delete-btn').addEventListener('click', function() {
+  document.getElementById('avatar-menu').classList.remove('open');
+  const fd = new FormData();
+  fd.append('action', 'delete');
+  postJson("{% url 'users:update_avatar' %}", fd).then(data => {
+    if (data.success) {
+      document.getElementById('avatar-img').src = "{% static 'images/profile_default.jpg' %}";
+      const sidebarAvatar = document.querySelector('.avatar img');
+      if (sidebarAvatar) sidebarAvatar.src = "{% static 'images/profile_default.jpg' %}";
+    }
+  });
+});
+
+// ── Bio ──────────────────────────────────────────────────────────────────────
+function openBioEdit() {
+  document.getElementById('bio-display').style.display = 'none';
+  document.getElementById('bio-edit-form').classList.add('open');
+  document.getElementById('bio-textarea').focus();
+}
+
+function closeBioEdit() {
+  document.getElementById('bio-display').style.display = '';
+  document.getElementById('bio-edit-form').classList.remove('open');
+}
+
+function saveBio() {
+  const bio = document.getElementById('bio-textarea').value.trim();
+  const fd = new FormData();
+  fd.append('bio', bio);
+  postJson("{% url 'users:update_bio' %}", fd).then(data => {
+    if (data.success) {
+      const display = document.getElementById('bio-display');
+      display.innerHTML = bio
+        ? `<span class="bio-text" id="bio-text" onclick="openBioEdit()">${bio}</span>`
+        : `<span class="bio-placeholder" onclick="openBioEdit()">Add a bio...</span>`;
+      closeBioEdit();
+    }
+  });
+}
+
+// ── Filter ───────────────────────────────────────────────────────────────────
+document.getElementById('filter-toggle').addEventListener('click', function() {
+  document.getElementById('filter-bar').classList.toggle('open');
+});
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.filter;
+    document.querySelectorAll('#posts-grid .tile').forEach(tile => {
+      if (filter === 'all') tile.style.display = '';
+      else if (filter === 'image') tile.style.display = tile.dataset.hasImage === 'true' ? '' : 'none';
+      else if (filter === 'text') tile.style.display = tile.dataset.hasImage === 'false' ? '' : 'none';
+    });
+  });
+});
+
+// ── Post modal ───────────────────────────────────────────────────────────────
+document.getElementById('open-post-modal').addEventListener('click', function() {
+  document.getElementById('post-modal').classList.add('open');
+});
+
+function closePostModal() {
+  document.getElementById('post-modal').classList.remove('open');
+}
+
+document.getElementById('post-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePostModal();
+});
+
+document.getElementById('post-form').addEventListener('submit', function() {
+  const btn = document.getElementById('post-submit-btn');
+  btn.textContent = 'Posting...';
+  btn.disabled = true;
+});
+
+// ── Close dropdowns on outside click ─────────────────────────────────────────
+document.addEventListener('click', function() {
+  document.getElementById('banner-picker').classList.remove('open');
+  document.getElementById('avatar-menu').classList.remove('open');
+});
+</script>
 
 {% endblock %}

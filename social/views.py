@@ -27,13 +27,11 @@ from fittogether.utils import week_bounds
 
 @login_required(login_url="users:register")
 def feed_view(request):
-    # Usuarios que yo sigo CON amistad aceptada
     following_ids = Follow.objects.filter(
         follower=request.user,
         status='accepted',
     ).values_list("following_id", flat=True)
 
-    # Si todavía no sigue a nadie, muestra al menos los posts del usuario
     base_filter = Q(author__in=following_ids) | Q(author=request.user)
 
     posts = (
@@ -52,7 +50,6 @@ def feed_view(request):
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
 
-    # Posting rules (for UI):
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(author=request.user, created_at__date=today).exists()
 
@@ -63,7 +60,6 @@ def feed_view(request):
     training_days_remaining = max(0, weekly_limit - posts_this_week)
     can_post = (weekly_limit >= 1) and (posts_this_week < weekly_limit) and (not already_posted_today)
 
-    # El calendario/streak ya lo provee el context processor streak_calendar
     ctx = {
         "posts": posts,
         "can_post": can_post,
@@ -77,9 +73,6 @@ def feed_view(request):
 
 @login_required
 def search_users(request):
-    """
-    Busca usuarios por username
-    """
     query = request.GET.get('q', '').strip()
     results = []
 
@@ -90,32 +83,45 @@ def search_users(request):
             id=request.user.id
         ).select_related('profile')[:10]
 
-        following_ids = Follow.objects.filter(
+        # Ids donde YO sigo a alguien con accepted
+        following_accepted_ids = set(Follow.objects.filter(
             follower=request.user,
             status='accepted'
-        ).values_list('following_id', flat=True)
+        ).values_list('following_id', flat=True))
 
-        pending_sent_ids = Follow.objects.filter(
+        # Ids donde YO envié solicitud pending
+        pending_sent_ids = set(Follow.objects.filter(
             follower=request.user,
             status='pending'
-        ).values_list('following_id', flat=True)
+        ).values_list('following_id', flat=True))
 
-        pending_received_ids = Follow.objects.filter(
+        # Ids donde ALGUIEN me envió solicitud pending
+        pending_received_ids = set(Follow.objects.filter(
             following=request.user,
             status='pending'
-        ).values_list('follower_id', flat=True)
+        ).values_list('follower_id', flat=True))
+
+        # Ids donde alguien me sigue con accepted (para detectar amistad completa)
+        followers_accepted_ids = set(Follow.objects.filter(
+            following=request.user,
+            status='accepted'
+        ).values_list('follower_id', flat=True))
 
         for user in users:
+            # is_friend = amistad mutua accepted
+            is_friend = user.id in following_accepted_ids and user.id in followers_accepted_ids
+            # is_following = yo lo sigo accepted (aunque no sea mutuo aún)
+            is_following = user.id in following_accepted_ids
+
             results.append({
                 'id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile.profile_picture.url if hasattr(user, 'profile') and user.profile.profile_picture else None,
-                'is_friend': user.id in following_ids,
+                'is_following': is_following or is_friend,
                 'has_pending_sent': user.id in pending_sent_ids,
                 'has_pending_received': user.id in pending_received_ids,
             })
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "query": query,
         "results": results,
@@ -138,10 +144,27 @@ def toggle_follow(request, user_id):
     ).first()
 
     if follow_obj:
+        was_accepted = follow_obj.status == 'accepted'
         follow_obj.delete()
+
+        # Si era amistad aceptada, eliminar AMBAS direcciones
+        if was_accepted:
+            Follow.objects.filter(
+                follower=target_user,
+                following=request.user
+            ).delete()
+
         is_following = False
         is_pending = False
     else:
+        # Antes de crear una nueva solicitud, limpiar cualquier Follow inverso
+        # huérfano que haya quedado (por si acaso)
+        Follow.objects.filter(
+            follower=target_user,
+            following=request.user,
+            status='accepted'
+        ).delete()
+
         Follow.objects.create(
             follower=request.user,
             following=target_user,
@@ -163,10 +186,6 @@ def toggle_follow(request, user_id):
 @login_required
 @require_POST
 def toggle_like(request, post_id):
-    """
-    Dar o quitar like a un post.
-    Solo permitido si el usuario es el autor o tiene amistad aceptada.
-    """
     post = get_object_or_404(Post, id=post_id)
 
     is_own = post.author == request.user
@@ -239,7 +258,6 @@ def user_profile(request, username):
     following_count = Follow.objects.filter(follower=profile_user, status='accepted').count()
     posts_count = posts.count()
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "profile_user": profile_user,
         "is_following": is_following,
@@ -301,9 +319,6 @@ def add_comment(request, post_id):
 
 @login_required
 def friend_requests(request):
-    """
-    Muestra las solicitudes de amistad pendientes
-    """
     received_requests = Follow.objects.filter(
         following=request.user,
         status='pending'
@@ -319,7 +334,6 @@ def friend_requests(request):
         status='accepted'
     ).select_related('following')
 
-    # El calendario/streak ya lo provee el context processor
     ctx = {
         "received_requests": received_requests,
         "sent_requests": sent_requests,
@@ -342,18 +356,15 @@ def accept_friend_request(request, request_id):
     friend_request.status = 'accepted'
     friend_request.save()
 
-    # Crear relación inversa si no existe
-    Follow.objects.get_or_create(
+    # Crear o actualizar relación inversa
+    reverse_follow, created = Follow.objects.get_or_create(
         follower=request.user,
         following=friend_request.follower,
         defaults={'status': 'accepted'}
     )
-    # Si ya existía pendiente, actualizarla
-    Follow.objects.filter(
-        follower=request.user,
-        following=friend_request.follower,
-        status='pending'
-    ).update(status='accepted')
+    if not created and reverse_follow.status != 'accepted':
+        reverse_follow.status = 'accepted'
+        reverse_follow.save()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({
@@ -371,10 +382,6 @@ def accept_friend_request(request, request_id):
 @login_required
 @require_POST
 def reject_friend_request(request, request_id):
-    """
-    Rechazar/cancelar una solicitud de amistad.
-    Funciona tanto si eres el receptor (rechazar) como el emisor (cancelar).
-    """
     friend_request = Follow.objects.filter(
         id=request_id,
         status='pending'
