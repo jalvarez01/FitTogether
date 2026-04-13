@@ -1,6 +1,3 @@
-#Post views.py
-from datetime import datetime, timedelta
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
@@ -10,13 +7,7 @@ from django.utils import timezone
 from .forms import PostForm, PostEditForm
 from .models import Post
 from .services.gemini_moderation import moderate_post
-
-
-def _week_bounds(local_day):
-    start_day = local_day - timedelta(days=local_day.weekday())  # Monday
-    start_dt = timezone.make_aware(datetime.combine(start_day, datetime.min.time()))
-    end_dt = start_dt + timedelta(days=7)
-    return start_dt, end_dt
+from fittogether.utils import week_bounds
 
 
 @login_required
@@ -35,7 +26,7 @@ def create_post(request):
         messages.error(request, "Your profile training days are not set yet. Please update your profile before posting.")
         return redirect("social:feed")
 
-    start_dt, end_dt = _week_bounds(today)
+    start_dt, end_dt = week_bounds(today)
     posts_this_week = Post.objects.filter(author=request.user, created_at__gte=start_dt, created_at__lt=end_dt).count()
 
     if posts_this_week >= weekly_limit:
@@ -88,7 +79,7 @@ def edit_post(request, post_id):
             return redirect("posts:edit_post", post_id=post.id)
 
         content = (form.cleaned_data.get("content") or "").strip()
-        image = form.cleaned_data.get("image")  # puede venir None si no cambian imagen
+        image = form.cleaned_data.get("image")
 
         allowed, reason = moderate_post(content, image)
         if not allowed:

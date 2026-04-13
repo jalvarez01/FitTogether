@@ -1,17 +1,10 @@
 import calendar
-from datetime import datetime, timedelta
 
 from django.utils import timezone
 
 from posts.models import Post
 from users.models import WorkoutCompletion
-
-
-def _week_bounds(local_day):
-    start_day = local_day - timedelta(days=local_day.weekday())  # Monday
-    start_dt = timezone.make_aware(datetime.combine(start_day, datetime.min.time()))
-    end_dt = start_dt + timedelta(days=7)
-    return start_dt, end_dt
+from fittogether.utils import week_bounds
 
 
 def streak_calendar(request):
@@ -55,7 +48,7 @@ def streak_calendar(request):
     current_weekly_streak = getattr(profile, "current_weekly_streak", 0) or 0
     longest_weekly_streak = getattr(profile, "longest_weekly_streak", 0) or 0
 
-    start_dt, end_dt = _week_bounds(today)
+    start_dt, end_dt = week_bounds(today)
     weekly_progress = Post.objects.filter(
         author=request.user,
         created_at__gte=start_dt,

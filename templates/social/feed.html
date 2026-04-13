@@ -10,6 +10,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    max-height: vh;
+    overflow-y: auto;
   }
 
   .search-bar {
@@ -480,6 +482,17 @@
     opacity: 0.88;
   }
 </style>
+
+<div id="notification-container" style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+"></div>
+
 
 <div class="search-bar">
   <form action="{% url 'social:search' %}" method="get">
