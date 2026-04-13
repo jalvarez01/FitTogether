@@ -219,11 +219,36 @@
     color: #374151;
     line-height: 1.5;
     min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .bio-text { cursor: pointer; display: inline; }
+  .bio-content {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bio-text { cursor: pointer; }
   .bio-text:hover { text-decoration: underline; text-decoration-style: dashed; }
   .bio-placeholder { color: #9ca3af; font-style: italic; cursor: pointer; }
   .bio-placeholder:hover { color: #6b7280; }
+  .bio-edit-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 4px 10px;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .bio-edit-btn:hover { background: #f3f4f6; color: #030303; }
 
   .bio-edit-form { display: none; margin: 12px 10px 0; }
   .bio-edit-form.open { display: block; }
@@ -258,9 +283,9 @@
     height: 28px;
     padding: 0 14px;
     border-radius: 999px;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #6b7280;
+    border: none;
+    background: #f3f4f6;
+    color: #374151;
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
@@ -567,28 +592,22 @@
     </div>
 
     <!-- Bio -->
-    <div class="bio-block" id="bio-display" style="display: flex; align-items: flex-start; gap: 8px;">
-      <div style="flex: 1;">
+    <div class="bio-block" id="bio-display">
+      <div class="bio-content" id="bio-content">
         {% if profile.bio %}
           <span class="bio-text" id="bio-text" onclick="openBioEdit()">{{ profile.bio }}</span>
         {% else %}
           <span class="bio-placeholder" onclick="openBioEdit()">Add a bio...</span>
         {% endif %}
       </div>
-      <button onclick="openBioEdit()" type="button" title="Edit bio"
-              style="background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 8px;
-                     cursor: pointer; color: #6b7280; font-size: 12px; white-space: nowrap;
-                     transition: all 0.15s; display: flex; align-items: center; gap: 4px;"
-              onmouseover="this.style.background='#f3f4f6'; this.style.color='#030303';"
-              onmouseout="this.style.background='none'; this.style.color='#6b7280';">
-        ✏️ Edit
-      </button>
+      <button class="bio-edit-btn" onclick="openBioEdit()" type="button">Edit</button>
     </div>
     <div class="bio-edit-form" id="bio-edit-form">
-      <textarea class="bio-textarea" id="bio-textarea" rows="3" maxlength="300" placeholder="Tell us about yourself...">{{ profile.bio }}</textarea>
-      <div>
+      <textarea class="bio-textarea" id="bio-textarea" rows="2" maxlength="60" placeholder="Short bio (max 60 chars)...">{{ profile.bio }}</textarea>
+      <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
         <button class="bio-save-btn" onclick="saveBio()">Save</button>
         <button class="bio-cancel-btn" onclick="closeBioEdit()">Cancel</button>
+        <span style="font-size:11px; color:#9ca3af; margin-left:auto;" id="bio-charcount">{{ profile.bio|length }}/60</span>
       </div>
     </div>
 
@@ -735,7 +754,9 @@ document.getElementById('avatar-delete-btn').addEventListener('click', function(
 function openBioEdit() {
   document.getElementById('bio-display').style.display = 'none';
   document.getElementById('bio-edit-form').classList.add('open');
-  document.getElementById('bio-textarea').focus();
+  var ta = document.getElementById('bio-textarea');
+  ta.focus();
+  updateBioCharcount();
 }
 
 function closeBioEdit() {
@@ -743,14 +764,26 @@ function closeBioEdit() {
   document.getElementById('bio-edit-form').classList.remove('open');
 }
 
+function updateBioCharcount() {
+  var ta = document.getElementById('bio-textarea');
+  var counter = document.getElementById('bio-charcount');
+  if (counter) counter.textContent = ta.value.length + '/60';
+}
+
+document.getElementById('bio-textarea').addEventListener('input', updateBioCharcount);
+
 function saveBio() {
-  const bio = document.getElementById('bio-textarea').value.trim();
-  const fd = new FormData();
+  var bio = document.getElementById('bio-textarea').value.trim();
+  if (bio.length > 60) {
+    alert('Bio must be 60 characters or less.');
+    return;
+  }
+  var fd = new FormData();
   fd.append('bio', bio);
   postJson("{% url 'users:update_bio' %}", fd).then(data => {
     if (data.success) {
-      const display = document.getElementById('bio-display');
-      display.innerHTML = bio
+      var content = document.getElementById('bio-content');
+      content.innerHTML = bio
         ? `<span class="bio-text" id="bio-text" onclick="openBioEdit()">${bio}</span>`
         : `<span class="bio-placeholder" onclick="openBioEdit()">Add a bio...</span>`;
       closeBioEdit();

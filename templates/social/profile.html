@@ -6,7 +6,7 @@
 {% block content %}
 <style>
   .profile-container { 
-    max-width: 800px; 
+    max-width: 500px; 
     margin: 0 auto;
     padding-right: 16px;
     box-sizing: border-box; 
@@ -19,16 +19,19 @@
     display: flex;
     gap: 20px;
     margin-bottom: 20px;
+    overflow: hidden;
   }
   .profile-avatar {
     width: 100px; height: 100px;
+    min-width: 100px;
     border-radius: 50%;
     overflow: hidden;
     background: white;
     border: 4px solid white;
+    flex-shrink: 0;
   }
   .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .profile-info { flex: 1; }
+  .profile-info { flex: 1; min-width: 0; overflow: hidden; }
   .profile-names {
     font-size: 21px;
     font-weight: 700;
@@ -40,6 +43,9 @@
     color: #4b5563;
     margin: 8px 0 4px;
     line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .profile-stats {
     display: flex;
@@ -73,6 +79,7 @@
     max-width: 100%;
     box-sizing: border-box;
   }
+  .post p { word-break: break-word; overflow-wrap: break-word; }
   .posts-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
 </style>
 

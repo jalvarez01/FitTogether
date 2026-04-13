@@ -51,6 +51,8 @@ def profile_view(request):
 @require_POST
 def update_bio(request):
     bio = request.POST.get('bio', '').strip()
+    if len(bio) > 60:
+        return JsonResponse({'success': False, 'error': 'Bio must be 60 characters or less.'}, status=400)
     request.user.profile.bio = bio
     request.user.profile.save()
     return JsonResponse({'success': True, 'bio': bio})
