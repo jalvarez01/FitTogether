@@ -70,14 +70,20 @@ pip install -r requirements.txt
 This will install:
 
 - asgiref
+- certifi
+- charset-normalizer
 - Django
 - gunicorn
+- idna
 - packaging
 - pillow
+- python-dotenv
+- requests
 - sqlparse
 - typing_extensions
+- urllib3
 
-### Step 5: Create a Superuser (Optional)
+### Step 4: Create a Superuser (Optional)
 
 To access Django's admin panel, create a superuser:
 
@@ -89,6 +95,14 @@ You'll be asked for:
 - Username
 - Email address
 - Password (you type it but it won't show on screen)
+
+
+### Step 5: Make Migrations 
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
 
 ### Step 6: Run the Development Server
 
@@ -168,4 +182,4 @@ python manage.py migrate --run-syncdb
 
 ---
 
-**Last updated:** February 2026
+**Last updated:** April 2026
