@@ -1,9 +1,13 @@
-# Virtual environment
-venv/
-
-# Python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+venv_FitTogether/
+.venv/
+env/
 
 # Database
 db.sqlite3
@@ -11,17 +15,18 @@ db.sqlite3
 # Environment variables
 .env
 
-# macOS
-.DS_Storedb.sqlite3
-*.sqlite3
-.DS_Store
+# Media uploads (optional — remove this line if you want to track media)
 media/
 
-# SSH keys / secrets
-*.pem
-*.key
-*.pub
-id_ed25519
-id_ed25519.pub
-.ssh/
-.env
+# Static collected
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

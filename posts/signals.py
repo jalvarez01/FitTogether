@@ -41,7 +41,6 @@ def record_daily_workout_and_update_weekly_streak(sender, instance: Post, create
             date=workout_date,
         )
         if not was_created:
-            # Second post same day shouldn't affect anything.
             return
 
         profile = getattr(user, "profile", None)
@@ -54,7 +53,7 @@ def record_daily_workout_and_update_weekly_streak(sender, instance: Post, create
 
         # 2) Check if the user has now completed the week
         wk_start = _week_start(workout_date)
-        wk_end = wk_start + timedelta(days=7)  # exclusive
+        wk_end = wk_start + timedelta(days=7)
 
         workouts_this_week = WorkoutCompletion.objects.filter(
             user=user,
@@ -63,10 +62,8 @@ def record_daily_workout_and_update_weekly_streak(sender, instance: Post, create
         ).count()
 
         if workouts_this_week < weekly_goal:
-            # Not enough training days yet → no streak update.
             return
 
-        # Mark week completion once.
         week_obj, week_created = WeekCompletion.objects.get_or_create(
             user=user,
             week_start=wk_start,
@@ -77,7 +74,6 @@ def record_daily_workout_and_update_weekly_streak(sender, instance: Post, create
         # 3) Update weekly streak (consecutive completed weeks)
         last_wk = profile.last_completed_week_start
         if last_wk == wk_start:
-            # Safety (shouldn't happen due to get_or_create above)
             return
 
         if last_wk and wk_start == (last_wk + timedelta(days=7)):

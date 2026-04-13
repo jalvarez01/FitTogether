@@ -1,4 +1,3 @@
-#Posts models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -10,9 +9,6 @@ class Post(models.Model):
     content = models.TextField(blank=True)
     image = models.ImageField(upload_to="posts/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def can_edit(self):
-        return timezone.now() <= self.created_at + timedelta(hours=24)
 
     def __str__(self):
         return f"{self.author.username} - {self.created_at:%Y-%m-%d %H:%M}"
