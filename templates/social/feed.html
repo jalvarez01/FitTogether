@@ -796,4 +796,10 @@
     })();
   </script>
 </div>
+
+{% if post.is_pending %}
+  <div style="background: #fff3cd; color: #856404; padding: 8px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 8px;">
+    ⏳ This post is waiting to be moderated. Only you can see it.
+  </div>
+{% endif %}
 {% endblock %}

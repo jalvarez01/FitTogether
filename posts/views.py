@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from .forms import PostForm, PostEditForm
 from .models import Post
-from .services.gemini_moderation import moderate_post
+from .services.gemini_moderation import moderate_post, APPROVED, REJECTED, PENDING
 from fittogether.utils import week_bounds
 
 
@@ -44,20 +44,25 @@ def create_post(request):
     content = (form.cleaned_data.get("content") or "").strip()
     image = form.cleaned_data.get("image")
 
-    allowed, reason = moderate_post(content, image)
-    if not allowed:
-        messages.error(request, f"Post blocked: {reason}")
+    status, reason = moderate_post(content, image)
+
+    if status == REJECTED:
+        messages.error(request, reason)
         return redirect("social:feed")
 
     post = form.save(commit=False)
     post.author = request.user
+    post.moderation_status = status  # "approved" o "pending"
     post.save()
 
-    remaining = weekly_limit - (posts_this_week + 1)
-    if remaining > 0:
-        messages.success(request, f"Post created successfully. Training days remaining this week: {remaining}.")
+    if status == PENDING:
+        messages.warning(request, reason)
     else:
-        messages.success(request, "Post created successfully. You completed your training days for this week!")
+        remaining = weekly_limit - (posts_this_week + 1)
+        if remaining > 0:
+            messages.success(request, f"Post created successfully. Training days remaining this week: {remaining}.")
+        else:
+            messages.success(request, "Post created successfully. You completed your training days for this week!")
 
     return redirect("social:feed")
 
@@ -81,13 +86,21 @@ def edit_post(request, post_id):
         content = (form.cleaned_data.get("content") or "").strip()
         image = form.cleaned_data.get("image")
 
-        allowed, reason = moderate_post(content, image)
-        if not allowed:
-            messages.error(request, f"Post blocked: {reason}")
+        status, reason = moderate_post(content, image)
+
+        if status == REJECTED:
+            messages.error(request, reason)
             return redirect("posts:edit_post", post_id=post.id)
 
-        form.save()
-        messages.success(request, "Post updated successfully.")
+        post = form.save(commit=False)
+        post.moderation_status = status
+        post.save()
+
+        if status == PENDING:
+            messages.warning(request, reason)
+        else:
+            messages.success(request, "Post updated successfully.")
+
         return redirect("social:feed")
 
     form = PostEditForm(instance=post)

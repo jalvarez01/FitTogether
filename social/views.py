@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.contrib import messages
 
 from posts.models import Post
-from posts.services.gemini_moderation import moderate_post
+from posts.services.gemini_moderation import moderate_post, APPROVED, REJECTED, PENDING
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 
@@ -32,7 +32,10 @@ def feed_view(request):
         status='accepted',
     ).values_list("following_id", flat=True)
 
-    base_filter = Q(author__in=following_ids) | Q(author=request.user)
+    base_filter = (
+        (Q(author__in=following_ids) & Q(moderation_status=Post.MODERATION_APPROVED))
+        | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
+    )
 
     posts = (
         Post.objects
@@ -49,6 +52,7 @@ def feed_view(request):
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(author=request.user, created_at__date=today).exists()
@@ -83,34 +87,28 @@ def search_users(request):
             id=request.user.id
         ).select_related('profile')[:10]
 
-        # Ids donde YO sigo a alguien con accepted
         following_accepted_ids = set(Follow.objects.filter(
             follower=request.user,
             status='accepted'
         ).values_list('following_id', flat=True))
 
-        # Ids donde YO envié solicitud pending
         pending_sent_ids = set(Follow.objects.filter(
             follower=request.user,
             status='pending'
         ).values_list('following_id', flat=True))
 
-        # Ids donde ALGUIEN me envió solicitud pending
         pending_received_ids = set(Follow.objects.filter(
             following=request.user,
             status='pending'
         ).values_list('follower_id', flat=True))
 
-        # Ids donde alguien me sigue con accepted (para detectar amistad completa)
         followers_accepted_ids = set(Follow.objects.filter(
             following=request.user,
             status='accepted'
         ).values_list('follower_id', flat=True))
 
         for user in users:
-            # is_friend = amistad mutua accepted
             is_friend = user.id in following_accepted_ids and user.id in followers_accepted_ids
-            # is_following = yo lo sigo accepted (aunque no sea mutuo aún)
             is_following = user.id in following_accepted_ids
 
             results.append({
@@ -147,7 +145,6 @@ def toggle_follow(request, user_id):
         was_accepted = follow_obj.status == 'accepted'
         follow_obj.delete()
 
-        # Si era amistad aceptada, eliminar AMBAS direcciones
         if was_accepted:
             Follow.objects.filter(
                 follower=target_user,
@@ -157,8 +154,6 @@ def toggle_follow(request, user_id):
         is_following = False
         is_pending = False
     else:
-        # Antes de crear una nueva solicitud, limpiar cualquier Follow inverso
-        # huérfano que haya quedado (por si acaso)
         Follow.objects.filter(
             follower=target_user,
             following=request.user,
@@ -244,8 +239,13 @@ def user_profile(request, username):
         status='pending'
     ).exists()
 
+    if profile_user == request.user:
+        post_filter = Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING])
+    else:
+        post_filter = Q(moderation_status=Post.MODERATION_APPROVED)
+
     posts = Post.objects.filter(
-        author=profile_user
+        Q(author=profile_user) & post_filter
     ).annotate(
         likes_count=Count("like", distinct=True),
         comments_count=Count("comment", distinct=True)
@@ -253,6 +253,7 @@ def user_profile(request, username):
 
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
     followers_count = Follow.objects.filter(following=profile_user, status='accepted').count()
     following_count = Follow.objects.filter(follower=profile_user, status='accepted').count()
@@ -292,9 +293,10 @@ def add_comment(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
 
-    allowed, reason = moderate_post(content)
-    if not allowed:
-        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"})
+    status, reason = moderate_post(content)
+
+    if status == REJECTED:
+        return JsonResponse({"success": False, "error": reason})
 
     comment = Comment.objects.create(
         user=request.user,
@@ -312,10 +314,6 @@ def add_comment(request, post_id):
         }
     })
 
-
-# ============================================================================
-# FUNCIONES DE AMISTAD
-# ============================================================================
 
 @login_required
 def friend_requests(request):
@@ -356,12 +354,12 @@ def accept_friend_request(request, request_id):
     friend_request.status = 'accepted'
     friend_request.save()
 
-    # Crear o actualizar relación inversa
     reverse_follow, created = Follow.objects.get_or_create(
         follower=request.user,
         following=friend_request.follower,
         defaults={'status': 'accepted'}
     )
+
     if not created and reverse_follow.status != 'accepted':
         reverse_follow.status = 'accepted'
         reverse_follow.save()
