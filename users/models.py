@@ -10,19 +10,14 @@ class Profile(models.Model):
 
     bio = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    banner_color = models.CharField(max_length=20, default='#efeff1')  # ← NUEVO
 
     weekly_training_days = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(7)]
     )
 
-    # ── Weekly streak ───────────────────────────────────────────────────────
-    # In FitTogether, a "workout completed" is recorded when the user posts.
-    # A "week completed" happens when the user posts on *weekly_training_days*
-    # distinct days inside the same Monday→Sunday week.
-    # Streak counts *consecutive completed weeks*.
     current_weekly_streak = models.PositiveIntegerField(default=0)
     longest_weekly_streak = models.PositiveIntegerField(default=0)
-    # Stores the Monday date of the last week the user completed.
     last_completed_week_start = models.DateField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -59,7 +54,3 @@ class WeekCompletion(models.Model):
 
     def __str__(self):
         return f"{self.user.username} week {self.week_start:%Y-%m-%d}"
-
-
-# Se crea un User con username y password
-# Se crea un Profile con weekly_training_days: entre 1 a 7 dias de entrenamiento

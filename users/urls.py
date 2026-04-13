@@ -7,4 +7,7 @@ app_name = "users"
 urlpatterns = [
     path("profile/", views.profile_view, name="profile"),
     path("register/", register_view, name="register"),
+    path("profile/update-bio/", views.update_bio, name="update_bio"),
+    path("profile/update-banner/", views.update_banner, name="update_banner"),
+    path("profile/update-avatar/", views.update_avatar, name="update_avatar"),
 ]

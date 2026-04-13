@@ -35,6 +35,12 @@
     letter-spacing: .4px;
     margin-top: 5px;
   }
+  .profile-bio {
+    font-size: 14px;
+    color: #4b5563;
+    margin: 8px 0 4px;
+    line-height: 1.5;
+  }
   .profile-stats {
     display: flex;
     gap: 20px;
@@ -83,6 +89,11 @@
     </div>
     <div class="profile-info">
       <h1 class="profile-names">{{ profile_user.username }}</h1>
+
+      {% if profile_user.profile.bio %}
+        <p class="profile-bio">{{ profile_user.profile.bio }}</p>
+      {% endif %}
+
       <div class="profile-stats">
         <div class="stat-item">
           <div class="number">{{ posts_count }}</div>
@@ -103,6 +114,7 @@
           id="follow-btn-profile"
           class="follow-btn {% if is_following %}following{% elif has_pending %}pending{% else %}not-following{% endif %}"
           data-user-id="{{ profile_user.id }}"
+          data-was-following="{% if is_following %}true{% else %}false{% endif %}"
           onclick="toggleFollow(this)">
           {% if is_following %}Following{% elif has_pending %}⏳ Request sent{% else %}Follow{% endif %}
         </button>
@@ -115,6 +127,9 @@
     {% for post in posts %}
       <div class="post">
         <p>{{ post.content }}</p>
+        {% if post.image %}
+          <img src="{{ post.image.url }}" alt="" style="max-width:100%; border-radius:12px; margin-top:8px;">
+        {% endif %}
         <small>{{ post.created_at|date:"M d, Y" }}</small>
       </div>
     {% empty %}
@@ -138,6 +153,7 @@ const csrftoken = getCookie('csrftoken');
 
 function toggleFollow(button) {
   const userId = button.getAttribute('data-user-id');
+  const wasFollowing = button.getAttribute('data-was-following') === 'true';
   button.disabled = true;
 
   fetch(`/follow/${userId}/`, {
@@ -154,18 +170,20 @@ function toggleFollow(button) {
       if (data.is_following) {
         button.textContent = 'Following';
         button.className = 'follow-btn following';
+        button.setAttribute('data-was-following', 'true');
         if (countEl) countEl.textContent = parseInt(countEl.textContent) + 1;
       } else if (data.is_pending) {
         button.textContent = '⏳ Request sent';
         button.className = 'follow-btn pending';
+        button.setAttribute('data-was-following', 'false');
       } else {
-        // Cancelled request or unfollowed
-        button.textContent = 'Follow';
-        button.className = 'follow-btn not-following';
-        // Only decrement followers if was actually following (accepted)
-        if (button.className.includes('following') && countEl) {
+        // Dejó de seguir
+        if (wasFollowing && countEl) {
           countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
         }
+        button.textContent = 'Follow';
+        button.className = 'follow-btn not-following';
+        button.setAttribute('data-was-following', 'false');
       }
     }
     button.disabled = false;

@@ -32,7 +32,6 @@ def feed_view(request):
         status='accepted',
     ).values_list("following_id", flat=True)
 
-    # Posts aprobados de amigos + propios (aprobados y pendientes)
     base_filter = (
         (Q(author__in=following_ids) & Q(moderation_status=Post.MODERATION_APPROVED))
         | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
@@ -88,27 +87,35 @@ def search_users(request):
             id=request.user.id
         ).select_related('profile')[:10]
 
-        following_ids = Follow.objects.filter(
+        following_accepted_ids = set(Follow.objects.filter(
             follower=request.user,
             status='accepted'
-        ).values_list('following_id', flat=True)
+        ).values_list('following_id', flat=True))
 
-        pending_sent_ids = Follow.objects.filter(
+        pending_sent_ids = set(Follow.objects.filter(
             follower=request.user,
             status='pending'
-        ).values_list('following_id', flat=True)
+        ).values_list('following_id', flat=True))
 
-        pending_received_ids = Follow.objects.filter(
+        pending_received_ids = set(Follow.objects.filter(
             following=request.user,
             status='pending'
-        ).values_list('follower_id', flat=True)
+        ).values_list('follower_id', flat=True))
+
+        followers_accepted_ids = set(Follow.objects.filter(
+            following=request.user,
+            status='accepted'
+        ).values_list('follower_id', flat=True))
 
         for user in users:
+            is_friend = user.id in following_accepted_ids and user.id in followers_accepted_ids
+            is_following = user.id in following_accepted_ids
+
             results.append({
                 'id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile.profile_picture.url if hasattr(user, 'profile') and user.profile.profile_picture else None,
-                'is_friend': user.id in following_ids,
+                'is_following': is_following or is_friend,
                 'has_pending_sent': user.id in pending_sent_ids,
                 'has_pending_received': user.id in pending_received_ids,
             })
@@ -135,10 +142,24 @@ def toggle_follow(request, user_id):
     ).first()
 
     if follow_obj:
+        was_accepted = follow_obj.status == 'accepted'
         follow_obj.delete()
+
+        if was_accepted:
+            Follow.objects.filter(
+                follower=target_user,
+                following=request.user
+            ).delete()
+
         is_following = False
         is_pending = False
     else:
+        Follow.objects.filter(
+            follower=target_user,
+            following=request.user,
+            status='accepted'
+        ).delete()
+
         Follow.objects.create(
             follower=request.user,
             following=target_user,
@@ -218,7 +239,6 @@ def user_profile(request, username):
         status='pending'
     ).exists()
 
-    # Si es mi perfil, muestro también los pendientes; si es otro, solo aprobados
     if profile_user == request.user:
         post_filter = Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING])
     else:
@@ -278,10 +298,6 @@ def add_comment(request, post_id):
     if status == REJECTED:
         return JsonResponse({"success": False, "error": reason})
 
-    if status == PENDING:
-        # Para comentarios, si la API no responde simplemente dejamos pasar
-        pass
-
     comment = Comment.objects.create(
         user=request.user,
         post=post,
@@ -298,10 +314,6 @@ def add_comment(request, post_id):
         }
     })
 
-
-# ============================================================================
-# FUNCIONES DE AMISTAD
-# ============================================================================
 
 @login_required
 def friend_requests(request):
@@ -342,16 +354,15 @@ def accept_friend_request(request, request_id):
     friend_request.status = 'accepted'
     friend_request.save()
 
-    Follow.objects.get_or_create(
+    reverse_follow, created = Follow.objects.get_or_create(
         follower=request.user,
         following=friend_request.follower,
         defaults={'status': 'accepted'}
     )
-    Follow.objects.filter(
-        follower=request.user,
-        following=friend_request.follower,
-        status='pending'
-    ).update(status='accepted')
+
+    if not created and reverse_follow.status != 'accepted':
+        reverse_follow.status = 'accepted'
+        reverse_follow.save()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({
