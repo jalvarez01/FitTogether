@@ -11,14 +11,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-CHANGE-ME-IN-PRODUCTION",
-)
+SECRET_KEY = os.getenv("SECRET_KEY") or "django-insecure-CHANGE-ME-IN-PRODUCTION"
 
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = (os.getenv("DEBUG") or "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = (os.getenv("ALLOWED_HOSTS") or "localhost,127.0.0.1").split(",")
 
 
 # Application definition
