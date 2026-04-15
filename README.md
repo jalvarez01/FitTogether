@@ -36,7 +36,7 @@ Before starting, make sure you have the following installed on your computer:
 
 ## Project Structure 
 
-``
+```
 FitTogether
 ├─ README.md
 ├─ fittogether
