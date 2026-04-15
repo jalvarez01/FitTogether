@@ -447,7 +447,7 @@
               Friends
             </a>
 
-            <a href="{% block nav_settings_url %}#{% endblock %}" class="{% block nav_settings_active %}{% endblock %}">
+            <a href="{% url 'users:settings' %}" class="{% block nav_settings_active %}{% endblock %}">
               <img class="icon icon-settings" src="{% static 'icons/settings.png' %}" alt="settings">
               Settings
             </a>
