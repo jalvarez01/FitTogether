@@ -34,6 +34,103 @@ Before starting, make sure you have the following installed on your computer:
 
 ---
 
+## Project Structure 
+
+``
+FitTogether
+├─ README.md
+├─ fittogether
+│  ├─ __init__.py
+│  ├─ asgi.py
+│  ├─ settings.py
+│  ├─ urls.py
+│  ├─ utils.py
+│  └─ wsgi.py
+├─ manage.py
+├─ posts
+│  ├─ __init__.py
+│  ├─ admin.py
+│  ├─ apps.py
+│  ├─ forms.py
+│  ├─ migrations
+│  │  ├─ 0001_initial.py
+│  │  ├─ 0002_alter_post_unique_together_alter_post_author_and_more.py
+│  │  ├─ 0003_post_moderation_status.py
+│  │  └─ __init__.py
+│  ├─ models.py
+│  ├─ services
+│  │  ├─ __init__.py
+│  │  └─ gemini_moderation.py
+│  ├─ signals.py
+│  ├─ templates
+│  │  └─ posts
+│  │     ├─ edit_post.html
+│  │     └─ not_allowed.html
+│  ├─ tests.py
+│  ├─ urls.py
+│  └─ views.py
+├─ requirements.txt
+├─ social
+│  ├─ __init__.py
+│  ├─ admin.py
+│  ├─ apps.py
+│  ├─ context_processors.py
+│  ├─ migrations
+│  │  ├─ 0001_initial.py
+│  │  ├─ 0002_follow_status_follow_updated_at.py
+│  │  └─ __init__.py
+│  ├─ models.py
+│  ├─ templates
+│  │  └─ social
+│  │     ├─ feed.html
+│  │     ├─ friend_requests.html
+│  │     ├─ profile.html
+│  │     └─ search.html
+│  ├─ tests.py
+│  ├─ urls.py
+│  └─ views.py
+├─ static
+│  ├─ icons
+│  │  ├─ comment.png
+│  │  ├─ edit.png
+│  │  ├─ feed.png
+│  │  ├─ filter.png
+│  │  ├─ friends.png
+│  │  ├─ heart.png
+│  │  ├─ image.png
+│  │  ├─ messages.png
+│  │  └─ settings.png
+│  └─ images
+│     └─ profile_default.jpg
+├─ templates
+│  ├─ base.html
+│  ├─ includes
+│  │  └─ streak_panel.html
+│  └─ registration
+│     └─ login.html
+└─ users
+   ├─ __init__.py
+   ├─ admin.py
+   ├─ apps.py
+   ├─ forms.py
+   ├─ migrations
+   │  ├─ 0001_initial.py
+   │  ├─ 0002_remove_profile_birth_date_and_more.py
+   │  ├─ 0003_profile_current_weekly_streak_and_more.py
+   │  ├─ 0004_profile_banner_color.py
+   │  └─ __init__.py
+   ├─ models.py
+   ├─ signals.py
+   ├─ templates
+   │  └─ users
+   │     ├─ profile.html
+   │     └─ register.html
+   ├─ tests.py
+   ├─ urls.py
+   └─ views.py
+
+```
+
 ## Installation and Setup
 
 ### Step 1: Get the Code
