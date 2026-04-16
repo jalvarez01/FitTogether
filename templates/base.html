@@ -389,6 +389,22 @@
       .main{ order: 1; }
       .frame{ padding: 16px; }
     }
+    .logo-img{
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      padding-top: 20px;
+    }
+    .logo-img img{
+      width: 170px;
+      height: auto;
+      opacity: 0.95;
+      transition: all 0.2s ease;
+    }
+    .logo-img img:hover{
+      opacity: 1;
+      transform: translateY(-1px);
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -460,7 +476,9 @@
             </form>
           </nav>
 
-          <div class="brand">FitTogether</div>
+          <div class="logo-img">
+            <img src="{% static 'images/fittogether-logo.png' %}" alt="FitTogether">
+          </div>
         </aside>
 
         <!-- MAIN CONTENT -->
