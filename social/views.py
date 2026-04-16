@@ -23,13 +23,14 @@ from posts.models import Post
 from posts.services.gemini_moderation import moderate_post
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
+from users.models import Profile
 
 
 @login_required(login_url="users:register")
 def feed_view(request):
     following_ids = Follow.objects.filter(
         follower=request.user,
-        status='accepted',
+        status="accepted",
     ).values_list("following_id", flat=True)
 
     base_filter = Q(author__in=following_ids) | Q(author=request.user)
@@ -41,7 +42,7 @@ def feed_view(request):
         .prefetch_related("like_set", "comment_set__user")
         .annotate(
             likes_count=Count("like", distinct=True),
-            comments_count=Count("comment", distinct=True)
+            comments_count=Count("comment", distinct=True),
         )
         .order_by("-created_at")
     )
@@ -51,14 +52,42 @@ def feed_view(request):
         post.can_edit_now = post.can_edit(request.user)
 
     today = timezone.localdate()
-    already_posted_today = Post.objects.filter(author=request.user, created_at__date=today).exists()
+    already_posted_today = Post.objects.filter(
+        author=request.user,
+        created_at__date=today,
+    ).exists()
 
     weekly_limit = getattr(getattr(request.user, "profile", None), "weekly_training_days", 0) or 0
     start_dt, end_dt = week_bounds(today)
-    posts_this_week = Post.objects.filter(author=request.user, created_at__gte=start_dt, created_at__lt=end_dt).count()
+    posts_this_week = Post.objects.filter(
+        author=request.user,
+        created_at__gte=start_dt,
+        created_at__lt=end_dt,
+    ).count()
 
     training_days_remaining = max(0, weekly_limit - posts_this_week)
     can_post = (weekly_limit >= 1) and (posts_this_week < weekly_limit) and (not already_posted_today)
+
+    weekday_codes = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    today_code = weekday_codes[today.weekday()]
+    today_label = dict(Profile.REMINDER_DAY_CHOICES).get(today_code, "today")
+
+    profile = request.user.profile
+    selected_reminder_days = profile.get_training_reminder_days_list()
+
+    should_show_training_reminder = (
+        profile.training_reminders_enabled
+        and today_code in selected_reminder_days
+        and not already_posted_today
+        and training_days_remaining > 0
+    )
+
+    session_key = f"training_reminder_seen_{today.isoformat()}"
+    show_training_reminder_popup = False
+
+    if should_show_training_reminder and not request.session.get(session_key, False):
+        show_training_reminder_popup = True
+        request.session[session_key] = True
 
     ctx = {
         "posts": posts,
@@ -66,6 +95,8 @@ def feed_view(request):
         "training_days_remaining": training_days_remaining,
         "weekly_training_days": weekly_limit,
         "already_posted_today": already_posted_today,
+        "show_training_reminder_popup": show_training_reminder_popup,
+        "training_reminder_day_label": today_label,
     }
 
     return render(request, "social/feed.html", ctx)

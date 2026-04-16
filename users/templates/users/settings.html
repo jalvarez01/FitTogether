@@ -8,7 +8,7 @@
 {% block content %}
 <style>
   .settings-wrap{
-    max-width: 720px;
+    max-width: 760px;
   }
 
   .settings-card{
@@ -53,7 +53,8 @@
     letter-spacing: .2px;
   }
 
-  .field input{
+  .field input[type="text"],
+  .field input[type="number"]{
     width: 100%;
     height: 42px;
     border-radius: 12px;
@@ -65,8 +66,51 @@
     font-family: inherit;
   }
 
-  .field input:focus{
+  .field input[type="text"]:focus,
+  .field input[type="number"]:focus{
     border-color: rgba(0,0,0,.35);
+  }
+
+  .toggle-row{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toggle-row input[type="checkbox"]{
+    width: 14px;
+    height: 14px;
+  }
+
+  .toggle-row label{
+    margin-bottom: 0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .days-grid{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .day-option{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid rgba(17,24,39,.08);
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .day-option input{
+    width: 12px;
+    height: 12px;
+    margin: 0;
   }
 
   .help{
@@ -128,10 +172,10 @@
   <div class="settings-card">
     <div class="settings-title">Profile settings</div>
     <div class="settings-sub">
-      Update your username and your weekly training goal.
+      Update your username, your weekly training goal, and your reminder preferences.
     </div>
 
-    <div class="pill">⚙️ You can change your username and training target here</div>
+    <div class="pill">⚙️ You can manage profile info and pop-up reminders here</div>
 
     <form method="post" novalidate>
       {% csrf_token %}
@@ -148,7 +192,30 @@
           {{ form.weekly_training_days.label_tag }}
           {{ form.weekly_training_days }}
           {% if form.weekly_training_days.errors %}{{ form.weekly_training_days.errors }}{% endif %}
-          <div class="help">Choose a value from 1 to 7. The current week will be updated based on this new target.</div>
+          <div class="help">Choose a value from 1 to 7.</div>
+        </div>
+
+        <div class="field">
+          <div class="toggle-row">
+            {{ form.training_reminders_enabled }}
+            {{ form.training_reminders_enabled.label_tag }}
+          </div>
+          {% if form.training_reminders_enabled.errors %}{{ form.training_reminders_enabled.errors }}{% endif %}
+          <div class="help">If enabled, FitTogether will show a pop-up reminder on your selected training days.</div>
+        </div>
+
+        <div class="field">
+          <label>Reminder days</label>
+          <div class="days-grid">
+            {% for checkbox in form.training_reminder_days %}
+              <label class="day-option">
+                {{ checkbox.tag }}
+                <span>{{ checkbox.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% if form.training_reminder_days.errors %}{{ form.training_reminder_days.errors }}{% endif %}
+          <div class="help">Select the days when the pop-up reminder should appear.</div>
         </div>
       </div>
 
