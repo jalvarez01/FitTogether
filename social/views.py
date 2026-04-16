@@ -50,6 +50,7 @@ def feed_view(request):
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
+        post.can_delete_now = post.can_edit(request.user)
 
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(
