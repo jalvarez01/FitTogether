@@ -11,10 +11,6 @@ def week_start_for(day):
 
 
 def recalculate_profile_streak(profile):
-    """
-    Recalculate current_weekly_streak, longest_weekly_streak and
-    last_completed_week_start from WeekCompletion history.
-    """
     completed_weeks = list(
         WeekCompletion.objects.filter(user=profile.user)
         .order_by("week_start")
@@ -47,8 +43,6 @@ def recalculate_profile_streak(profile):
     last_week = completed_weeks[-1]
     current_week_start = week_start_for(timezone.localdate())
 
-    # current streak only counts if the most recent completed week
-    # is the current week or a direct chain up to the current week.
     if last_week == current_week_start:
         current = 1
         idx = len(completed_weeks) - 1
@@ -74,14 +68,6 @@ def recalculate_profile_streak(profile):
 
 @transaction.atomic
 def apply_weekly_training_days_change(user, new_goal):
-    """
-    Update weekly_training_days and make the current week consistent with the new goal.
-
-    Rules:
-    - Past completed weeks remain untouched.
-    - Current week is re-evaluated against the new goal.
-    - Streak fields are recalculated from WeekCompletion history.
-    """
     profile = user.profile
     profile.weekly_training_days = new_goal
     profile.save(update_fields=["weekly_training_days"])

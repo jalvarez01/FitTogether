@@ -2,17 +2,124 @@
 {% load static %}
 
 {% block nav_feed_active %}is-active{% endblock %}
-{% block page_title %}Feed{% endblock %}
+{% block page_title %}Feeds{% endblock %}
 
 {% block content %}
 <style>
-  .feed-wrap{
-    display:flex;
-    flex-direction:column;
-    gap: 16px;
+  .feed-wrap{ 
+    display:flex; 
+    flex-direction:column; 
+    gap: 16px; 
   }
 
-  /* Post pastel cards */
+  .search-bar {
+    background: #f9fafb;
+    border-radius: 18px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  
+  .search-bar form {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .search-bar input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .search-bar input:focus {
+    outline: none;
+    border-color: #a8a9b1;
+  }
+  
+  .search-bar button {
+    background: #030303;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  
+  .search-bar button:hover {
+    opacity: 0.92;
+  }
+
+  .reminder-toast{
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    width: min(360px, calc(100vw - 32px));
+    background: #ffffff;
+    border: 1px solid rgba(17,24,39,.08);
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.12);
+    padding: 14px 14px 12px;
+    z-index: 120;
+    animation: slideInReminder .28s ease;
+  }
+
+  @keyframes slideInReminder {
+    from { opacity: 0; transform: translateY(-8px) translateX(12px); }
+    to   { opacity: 1; transform: translateY(0) translateX(0); }
+  }
+
+  .reminder-toast.hide{
+    display: none;
+  }
+
+  .reminder-top{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  .reminder-title{
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+  }
+
+  .reminder-close{
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+  }
+
+  .reminder-text{
+    font-size: 13px;
+    line-height: 1.5;
+    color: #374151;
+  }
+
+  .reminder-pill{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    background: #eef2ff;
+    border: 1px solid rgba(17,24,39,.06);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+  }
+
   .post{
     border-radius: 18px;
     overflow:hidden;
@@ -38,20 +145,38 @@
     background: #d1d5db;
     overflow:hidden;
     flex: 0 0 auto;
+  }
+  .post-avatar a{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .post-avatar img{ 
+    width:100%; 
+    height:100%; 
+    object-fit:cover; 
     cursor: pointer;
   }
-  .post-avatar img{ width:100%; height:100%; object-fit:cover; }
 
-  .post-meta{ display:flex; flex-direction:column; line-height:1.1; }
+  .post-meta{ 
+    display:flex; 
+    flex-direction:column; 
+    line-height:1.1; 
+  }
   .post-meta .name{ 
     font-weight:700; 
-    font-size:14px; 
-    cursor: pointer;
+    font-size:14px;
     color: #111827;
     text-decoration: none;
   }
-  .post-meta .name:hover{ text-decoration: underline; }
-  .post-meta .time{ font-size:12px; color:#6b7280; margin-top: 4px; }
+  .post-meta .name:hover{
+    opacity: 0.7;
+  }
+  .post-meta .time{ 
+    font-size:12px; 
+    color:#6b7280; 
+    margin-top: 4px; 
+  }
 
   .post-text{
     margin: 10px 0 14px;
@@ -59,7 +184,6 @@
     color:#111827;
   }
 
-  /* Images row */
   .images-row{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -88,7 +212,6 @@
     object-fit: contain;
   }
 
-  /* Bottom actions */
   .post-actions{
     display:flex;
     gap: 18px;
@@ -121,11 +244,21 @@
     transition: all 0.2s;
   }
 
-  .stat.likes{ color: #9ca3af; }
-  .stat.likes.active{ color: #fb7185; }
-  .stat.likes.active img{ opacity: 1; filter: brightness(1.2); }
+  .stat.likes{
+    color: #9ca3af;
+  }
+  
+  .stat.likes.active{
+    color: #fb7185;
+  }
+  
+  .stat.likes.active img{
+    opacity: 1;
+    filter: brightness(1.1);
+  }
 
   .stat.comments{ gap: 5px; }
+
   .stat.comments img{
     width: 23px;
     height: 23px;
@@ -134,47 +267,249 @@
     transform: translateY(2px);
   }
 
-  /* Pending moderation badge */
-  .pending-badge{
-    background: #fff3cd;
-    color: #856404;
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    margin-bottom: 8px;
+  .comments-section {
+    margin-top: 12px;
+    display: none;
   }
 
-  /* Search bar */
-  .search-bar {
-    background: #f3f4f6;
-    border-radius: 18px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
+  .comments-section.open {
+    display: block;
   }
-  .search-bar form { display: flex; gap: 8px; }
-  .search-bar input {
+
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .comment-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: fadeInUp 0.2s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .comment-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #d1d5db;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+
+  .comment-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .comment-bubble {
+    background: rgba(255,255,255,0.65);
+    border-radius: 12px;
+    padding: 7px 10px;
     flex: 1;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
-    padding: 8px 12px;
-    font-size: 14px;
+  }
+
+  .comment-bubble .comment-author {
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+  }
+
+  .comment-bubble .comment-text {
+    font-size: 13px;
+    color: #374151;
+    margin-top: 2px;
+    word-break: break-word;
+  }
+
+  .comment-bubble .comment-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 3px;
+  }
+
+  .comment-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .comment-form input {
+    flex: 1;
+    border: 1px solid rgba(17,24,39,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    padding: 7px 12px;
+    font-size: 13px;
     outline: none;
+    transition: border-color 0.2s;
   }
-  .search-bar input:focus{ border-color: #a8a9b1; }
-  .search-bar button {
-    background: #030303;
-    color: white;
+
+  .comment-form input:focus {
+    border-color: #a8a9b1;
+  }
+
+  .comment-form button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 999px;
     border: none;
-    border-radius: 12px;
-    padding: 8px 16px;
-    font-weight: 600;
-    font-size: 14px;
+    background: #030303;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
     cursor: pointer;
+    white-space: nowrap;
   }
-  .search-bar button:hover { opacity: 0.9; }
+
+  .comment-form button:hover { opacity: 0.88; }
+
+  .composer{
+    margin-top: 14px;
+    margin-bottom: 16px;
+    background: #efeff1;
+    border-radius: 18px;
+    padding: 12px 14px;
+    border: 1px solid rgba(0,0,0,.06);
+    box-shadow:none;
+  }
+
+  .composer-top{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .composer-avatar{
+    width: 34px; height: 34px;
+    border-radius: 999px;
+    background:#d1d5db;
+    overflow:hidden;
+    flex: 0 0 auto;
+  }
+  .composer-avatar img{ width:100%; height:100%; object-fit:cover; }
+
+  .composer-input{
+    flex:1;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,.08);
+    background:#fff;
+    padding: 0 12px;
+    font-size: 13px;
+    color:#6b7280;
+    display:flex;
+    align-items:center;
+  }
+
+  .composer-bottom{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+  }
+
+  .add-image{
+    display:inline-flex;
+    align-items:center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color:#000000;
+    background: transparent;
+    border: none;
+    padding: 6px 2px;
+    cursor:pointer;
+    letter-spacing: .5px;
+  }
+
+  .add-image img{
+    width: 16px; height: 16px;
+    object-fit:contain;
+    opacity:.9;
+  }
+
+  .send-btn{
+    height: 30px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: none;
+    background:#030303;
+    color:#fff;
+    font-weight: 700;
+    font-size: 12px;
+    cursor:pointer;
+  }
+  .send-btn:hover{ opacity:.92; }
+
+  .composer-status{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items:center;
+    margin: 10px 0 12px;
+    font-size: 13px;
+  }
+  .composer-status .status-ok{
+    background: #eef2ff;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .composer-status .status-warn{
+    background: #fff7ed;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .edit-post-btn{
+  margin-left: auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(17,24,39,.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  }
+  .edit-post-btn:hover{
+    opacity: .9;
+    transform: translateY(-1px);
+  }
 </style>
 
-<!-- Barra de búsqueda -->
+{% if show_training_reminder_popup %}
+  <div class="reminder-toast" id="trainingReminderToast">
+    <div class="reminder-top">
+      <div class="reminder-title">Training Reminder</div>
+      <button class="reminder-close" type="button" onclick="closeReminderToast()">×</button>
+    </div>
+    <div class="reminder-text">
+      Today is one of your training days. Don’t forget to complete your workout and protect your streak ✨
+    </div>
+    <div class="reminder-pill">
+      {{ training_reminder_day_label }} reminder
+    </div>
+  </div>
+{% endif %}
+
 <div class="search-bar">
   <form action="{% url 'social:search' %}" method="get">
     <input type="text" name="q" placeholder="Search users..." required>
@@ -183,14 +518,12 @@
 </div>
 
 <div class="feed-wrap">
+
   {% if posts %}
     {% for post in posts %}
+
       <article class="post {% cycle 'pastel-blue' 'pastel-pink' 'pastel-green' 'pastel-lilac' %}" data-post-id="{{ post.id }}">
         <div class="post-inner">
-
-          {% if post.is_pending %}
-            <div class="pending-badge">⏳ This post is waiting to be moderated. Only you can see it.</div>
-          {% endif %}
 
           <div class="post-header">
             <a href="{% url 'social:user_profile' post.author.username %}" class="post-avatar">
@@ -209,7 +542,9 @@
             </div>
 
             {% if post.can_edit_now %}
-              <a href="{% url 'posts:edit_post' post.id %}" style="margin-left:auto; background:#030303; color:#fff; text-decoration:none; padding:5px 12px; border-radius:999px; font-weight:650; font-size:12px;">Edit</a>
+              <a href="{% url 'posts:edit_post' post.id %}" class="edit-post-btn">
+                Edit
+              </a>
             {% endif %}
           </div>
 
@@ -244,259 +579,186 @@
               <span>Likes</span>
             </button>
 
-            <button class="stat comments" type="button" onclick="toggleComments(this)">
+            <button class="stat comments" type="button"
+                    data-post-id="{{ post.id }}"
+                    onclick="toggleComments(this)">
               <img src="{% static 'icons/comment.png' %}" alt="comments">
+              <span class="comments-count">{{ post.comments_count|default:0 }}</span>
               <span>Comments</span>
             </button>
           </div>
 
+          <div class="comments-section" id="comments-{{ post.id }}">
+            <div class="comments-list" id="comments-list-{{ post.id }}">
+              {% for comment in post.comment_set.all %}
+                <div class="comment-item">
+                  <div class="comment-avatar">
+                    {% if comment.user.profile.profile_picture %}
+                      <img src="{{ comment.user.profile.profile_picture.url }}" alt="">
+                    {% else %}
+                      <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                    {% endif %}
+                  </div>
+                  <div class="comment-bubble">
+                    <div class="comment-author">{{ comment.user.username }}</div>
+                    <div class="comment-text">{{ comment.content }}</div>
+                    <div class="comment-time">{{ comment.created_at|date:"M d, H:i" }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="comment-form">
+              <input type="text"
+                     id="comment-input-{{ post.id }}"
+                     placeholder="Write a comment..."
+                     maxlength="300">
+              <button type="button" onclick="submitComment({{ post.id }})">Send</button>
+            </div>
+          </div>
+
         </div>
       </article>
+
     {% endfor %}
   {% else %}
-    <div style="padding:20px; text-align:center;">
-      <p>No posts yet. Follow someone or create your first post! 🏋️</p>
-      <a href="{% url 'social:search' %}" style="color: #3b82f6; text-decoration: underline;">Search for users to follow</a>
+    <div class="card" style="padding:13px; text-align:center;">
+      No posts yet. Follow someone or create your first post! ᕦ(ง •̀_•́)ᕤ
     </div>
   {% endif %}
+
 </div>
 
 <script>
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
+function closeReminderToast() {
+  const toast = document.getElementById("trainingReminderToast");
+  if (toast) {
+    toast.classList.add("hide");
   }
-  return cookieValue;
+}
+
+// CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 const csrftoken = getCookie('csrftoken');
 
 function toggleLike(button) {
-  const postId = button.getAttribute('data-post-id');
-  const likesCountSpan = button.querySelector('.likes-count');
-  fetch(`/like/${postId}/`, {
-    method: 'POST',
-    headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      likesCountSpan.textContent = data.likes_count;
-      if (data.has_liked) button.classList.add('active');
-      else button.classList.remove('active');
-    }
-  })
-  .catch(err => console.error(err));
+    const postId = button.getAttribute('data-post-id');
+    const likesCountSpan = button.querySelector('.likes-count');
+    
+    fetch(`/like/${postId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            likesCountSpan.textContent = data.likes_count;
+            if (data.has_liked) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }
 
 function toggleComments(button) {
-  const postId = button.closest('article').dataset.postId;
-  let container = document.getElementById(`comment-container-${postId}`);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = `comment-container-${postId}`;
-    container.style.marginTop = '10px';
-    container.innerHTML = `
-      <form class="comment-form" data-post-id="${postId}">
-        <textarea name="content" placeholder="Write a comment..." rows="2"
-          style="width:100%; border-radius:12px; border:1px solid #e5e7eb; padding:8px; margin-bottom:5px; font-family:inherit; font-size:13px; resize:none; box-sizing:border-box;"></textarea>
-        <button type="submit" style="background:#030303; color:white; border:none; border-radius:12px; padding:6px 12px; cursor:pointer; font-weight:600; font-size:12px;">Send</button>
-      </form>
-      <div class="comments-list-${postId}" style="margin-top:10px;"></div>
-    `;
-    button.closest('.post-inner').appendChild(container);
-  }
-  container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    const postId = button.getAttribute('data-post-id');
+    const section = document.getElementById('comments-' + postId);
+    section.classList.toggle('open');
+    if (section.classList.contains('open')) {
+        document.getElementById('comment-input-' + postId).focus();
+    }
 }
 
-document.addEventListener('submit', function(e) {
-  if (!e.target.classList.contains('comment-form')) return;
-  e.preventDefault();
-  const form = e.target;
-  const postId = form.dataset.postId;
-  const content = form.querySelector('textarea').value;
-  if (!content.trim()) return;
-  fetch(`/comment/${postId}/`, {
-    method: 'POST',
-    headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `content=${encodeURIComponent(content)}`
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      const list = document.querySelector(`.comments-list-${postId}`);
-      const el = document.createElement('div');
-      el.style = 'padding:8px; background:rgba(255,255,255,0.5); border-radius:12px; margin-bottom:5px;';
-      el.innerHTML = `<strong>${data.comment.username}</strong>: ${data.comment.content}<div style="font-size:11px; color:#6b7280;">${data.comment.created_at}</div>`;
-      list.appendChild(el);
-      form.querySelector('textarea').value = '';
-    } else {
-      alert(data.error || 'Could not post comment.');
+function submitComment(postId) {
+    const input = document.getElementById('comment-input-' + postId);
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch(`/comment/${postId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `content=${encodeURIComponent(content)}`,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const list = document.getElementById('comments-list-' + postId);
+            const c = data.comment;
+
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            item.innerHTML = `
+                <div class="comment-avatar">
+                    <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                </div>
+                <div class="comment-bubble">
+                    <div class="comment-author">${c.username}</div>
+                    <div class="comment-text">${escapeHtml(c.content)}</div>
+                    <div class="comment-time">${c.created_at}</div>
+                </div>
+            `;
+            list.appendChild(item);
+            list.scrollTop = list.scrollHeight;
+
+            const article = document.querySelector(`article[data-post-id="${postId}"]`);
+            const countSpan = article.querySelector('.comments-count');
+            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+
+            input.value = '';
+        } else {
+            alert(data.error || 'No se pudo enviar el comentario.');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.matches('.comment-form input')) {
+        const postId = e.target.id.replace('comment-input-', '');
+        submitComment(parseInt(postId));
     }
-  });
 });
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
 </script>
+
 {% endblock %}
 
 {% block main_bottom %}
-<style>
-  .composer{
-    background: #efeff1;
-    border-radius: 18px;
-    padding: 12px 14px;
-    margin-top: 14px;
-    border: 1px solid rgba(0,0,0,.06);
-    flex-shrink: 0;
-  }
-
-  .composer-status{
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 10px;
-    font-size: 13px;
-  }
-  .composer-status .status-ok{
-    background: #eef2ff;
-    border: 1px solid rgba(0,0,0,.06);
-    padding: 6px 12px;
-    border-radius: 999px;
-  }
-  .composer-status .status-warn{
-    background: #fff7ed;
-    border: 1px solid rgba(0,0,0,.06);
-    padding: 6px 12px;
-    border-radius: 999px;
-  }
-
-  .composer-top{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .composer-avatar{
-    width: 34px; height: 34px;
-    border-radius: 999px;
-    background: #d1d5db;
-    overflow: hidden;
-    flex: 0 0 auto;
-  }
-  .composer-avatar img{ width:100%; height:100%; object-fit:cover; }
-
-  .composer-textarea{
-    flex: 1;
-    resize: none;
-    border: none;
-    outline: none;
-    background: #fff;
-    padding: 8px 12px;
-    border-radius: 14px;
-    font-size: 13px;
-    font-family: inherit;
-    min-height: 34px;
-    max-height: 80px;
-  }
-
-  .composer-bottom{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .composer-bottom-left{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .add-image{
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #000;
-    background: transparent;
-    border: none;
-    padding: 6px 2px;
-    cursor: pointer;
-  }
-  .add-image img{ width:16px; height:16px; object-fit:contain; opacity:.9; }
-
-  /* Image preview */
-  .image-preview{
-    display: none;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 4px 10px 4px 4px;
-    animation: fadeSlideIn 0.25s ease;
-  }
-  .image-preview.visible{ display: inline-flex; }
-  .image-preview-thumb{
-    width: 32px; height: 32px;
-    border-radius: 8px;
-    object-fit: cover;
-  }
-  .image-preview-name{
-    font-size: 11px;
-    color: #374151;
-    font-weight: 600;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .image-preview-remove{
-    background: none;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 0 2px;
-    line-height: 1;
-  }
-  .image-preview-remove:hover{ color: #ef4444; }
-
-  @keyframes fadeSlideIn{
-    from{ opacity:0; transform:translateY(4px); }
-    to{ opacity:1; transform:translateY(0); }
-  }
-
-  .send-btn{
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 999px;
-    border: none;
-    background: #030303;
-    color: #fff;
-    font-weight: 700;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .send-btn:hover{ opacity:.92; }
-  .send-btn:disabled{ opacity:.5; cursor:not-allowed; }
-</style>
-
 <div class="composer">
-  <form id="create-post-form" method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
+  <form method="POST" action="{% url 'posts:create_post' %}" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div class="composer-status">
       {% if can_post %}
-        <span class="status-ok">Training days remaining: <b>{{ training_days_remaining }}</b> / {{ weekly_training_days }}</span>
+        <span class="status-ok">Training days remaining this week: <b>{{ training_days_remaining }}</b> / {{ weekly_training_days }}</span>
         {% if already_posted_today %}
           <span class="status-warn">You already posted today.</span>
         {% endif %}
@@ -504,7 +766,7 @@ document.addEventListener('submit', function(e) {
         {% if already_posted_today %}
           <span class="status-warn">You already posted today (max 1 per day).</span>
         {% elif training_days_remaining == 0 %}
-          <span class="status-warn">You completed your training days this week. Come back next week ✨</span>
+          <span class="status-warn">You completed your training days for this week. Come back next week ✨</span>
         {% else %}
           <span class="status-warn">Posting is disabled right now.</span>
         {% endif %}
@@ -519,75 +781,171 @@ document.addEventListener('submit', function(e) {
           <img src="{% static 'images/profile_default.jpg' %}" alt="me">
         {% endif %}
       </div>
-      <textarea name="content" class="composer-textarea"
-                {% if not can_post %}disabled{% endif %}
-                placeholder="Share something..."></textarea>
+
+      <textarea 
+        name="content"
+        class="composer-input"
+        {% if not can_post %}disabled{% endif %}
+        placeholder="Share something..."
+        required
+        style="resize:none; border:none; outline:none; background:#fff; padding:8px 12px; border-radius:999px; width:100%;"></textarea>
     </div>
 
     <div class="composer-bottom">
-      <div class="composer-bottom-left">
-        <label class="add-image">
-          <img src="{% static 'icons/image.png' %}" alt="">
-          Image
-          <input type="file" name="image" id="image-input" accept="image/*" hidden {% if not can_post %}disabled{% endif %}>
-        </label>
+      <label class="add-image">
+        <img src="{% static 'icons/image.png' %}" alt="">
+        Image
+        <input type="file" name="image" hidden {% if not can_post %}disabled{% endif %}>
+      </label>
 
-        <div class="image-preview" id="image-preview">
-          <img class="image-preview-thumb" id="image-preview-thumb" src="" alt="">
-          <span class="image-preview-name" id="image-preview-name"></span>
-          <button type="button" class="image-preview-remove" id="image-preview-remove" title="Remove">✕</button>
-        </div>
-      </div>
-
-      <button id="create-post-submit" class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
+      <button class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
         {% if can_post %}Send{% else %}Locked{% endif %}
       </button>
     </div>
   </form>
 </div>
+{% endblock %}
 
-<script>
-(function() {
-  const fileInput = document.getElementById('image-input');
-  const preview = document.getElementById('image-preview');
-  const thumb = document.getElementById('image-preview-thumb');
-  const nameEl = document.getElementById('image-preview-name');
-  const removeBtn = document.getElementById('image-preview-remove');
-  const form = document.getElementById('create-post-form');
-  const submitBtn = document.getElementById('create-post-submit');
+{% block right_panel %}
+<style>
+  .streak-card{ padding: 2px 16px 16px; }
+  .streak-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 15px; }
+  .streak-title{ font-weight: 700; font-size: 19px; letter-spacing: .1px; }
+  .streak-sub{ font-size: 11px; color: var(--muted); margin-top: 10px; }
 
-  if (!fileInput) return;
-
-  fileInput.addEventListener('change', function() {
-    const file = this.files[0];
-    if (!file) {
-      preview.classList.remove('visible');
-      return;
-    }
-    nameEl.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      thumb.src = e.target.result;
-      preview.classList.add('visible');
-    };
-    reader.readAsDataURL(file);
-  });
-
-  removeBtn.addEventListener('click', function() {
-    fileInput.value = '';
-    preview.classList.remove('visible');
-    thumb.src = '';
-    nameEl.textContent = '';
-  });
-
-  if (form && submitBtn) {
-    form.addEventListener('submit', function() {
-      if (submitBtn.disabled) return;
-      submitBtn.dataset.originalText = submitBtn.textContent.trim();
-      submitBtn.textContent = 'Analyzing...';
-      submitBtn.disabled = true;
-    });
+  .month-nav{ display:flex; align-items:center; gap: 10px; margin-top: 19px; }
+  .month-btn{
+    width: 30px; height: 25px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.08);
+    background: #fff;
+    cursor:pointer;
+    display:flex; align-items:flex-start; justify-content:center;
+    font-weight: 700;
   }
-})();
-</script>
+  .month-btn:hover{ opacity:.75; }
+
+  .month-label{ font-weight: 600; font-size: 13px; }
+
+  .cal{
+    width: 100%;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,.06);
+    background: #fff;
+    padding: 12px;
+  }
+  .cal-head{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-align:center;
+    font-weight: 700;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .day{
+    height: 34px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 12px;
+    color: #111827;
+    user-select:none;
+    position: relative;
+  }
+  .day.muted{ color: rgba(17,24,39,.25); }
+  .day.done{
+    background: rgba(17,24,39,.18);
+    color: white;
+    width: 27px;
+    height: 27px;
+    margin: auto;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 2;
+  }
+  .day.today{ 
+    outline: 1px solid rgba(17,24,39,.18);
+    outline-offset: 1px;
+    outline-width: 2px;
+    width: 22px;
+    height: 22px;
+    margin: auto;
+  }
+  .streak-stats{
+    display:flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .pill{
+    flex:1;
+    background: #f9fafb;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 16px;
+    padding: 10px 12px;
+  }
+  .pill .n{ font-weight: 700; font-size: 16px; }
+  .pill .t{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+</style>
+
+<div class="card right-card streak-card">
+  <div class="streak-top">
+    <div>
+      <div class="streak-title">Streak</div>
+      <div class="streak-sub">Your streak increases when you complete your weekly workouts. ✨</div>
+    </div>
+
+    <div class="month-nav">
+      <a class="month-btn" href="?month={{ calendar_prev_month }}&year={{ calendar_prev_year }}" aria-label="previous month">‹</a>
+      <div class="month-label">{{ calendar_month_label }} {{ calendar_year }}</div>
+      <a class="month-btn" href="?month={{ calendar_next_month }}&year={{ calendar_next_year }}" aria-label="next month">›</a>
+    </div>
+  </div>
+
+  <div class="cal">
+    <div class="cal-head">
+      <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+    </div>
+
+    <div class="cal-grid">
+      {% for week in calendar_weeks %}
+        {% for day in week %}
+          {% if day == 0 %}
+            <div class="day muted">&nbsp;</div>
+          {% else %}
+            <div class="day
+              {% if day in calendar_completed_days %}done{% endif %}
+              {% if calendar_today_day and day == calendar_today_day %}today{% endif %}
+            ">
+              {{ day }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="streak-stats">
+    <div class="pill">
+      <div class="n">{{ current_weekly_streak }}</div>
+      <div class="t">Weeks</div>
+    </div>
+    <div class="pill">
+      <div class="n">{{ weekly_progress }}/{{ weekly_goal }}</div>
+      <div class="t">This week</div>
+    </div>
+    <div class="pill">
+      <div class="n">{{ longest_weekly_streak }}</div>
+      <div class="t">Best (weeks)</div>
+    </div>
+  </div>
+</div>
 {% endblock %}
