@@ -119,14 +119,20 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 20) -> Tupl
         return _mark_pending("OPENAI_API_KEY not configured")
 
     moderation_rules = (
-        "You are FitTogether Moderation. Decide if a post is allowed. "
-        "Hard rules (ALWAYS BLOCK): if text contains blocked terms (exact or obvious variants): "
-        f"{blocked_terms}. "
-        "Also BLOCK if content includes hate/harassment, sexual content involving minors, explicit sexual content, "
-        "self-harm instructions, illegal wrongdoing instructions, insults/profanity/abusive language directed at others. "
-        "Return JSON only with this schema: {\"allow\": true|false, \"reason\": \"short_reason\"}. "
-        "Keep reason under 60 chars."
+        f"Allow casual, sarcastic, or rude language. "
+        f"Block ONLY if post contains: {blocked_terms}, explicit sexual content, "
+        "extreme hate speech, or serious threats. "
+        "Return JSON: {\"allow\": true|false, \"reason\": \"short\"}."
     )
+
+    blocked_terms = [
+    "nigga",
+    "nigger",
+    "porn",
+    "xxx",
+    "sex",
+    "fuck you die"
+]
 
     user_parts = []
     if text:

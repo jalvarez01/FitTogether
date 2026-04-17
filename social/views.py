@@ -33,7 +33,10 @@ def feed_view(request):
         status="accepted",
     ).values_list("following_id", flat=True)
 
-    base_filter = Q(author__in=following_ids) | Q(author=request.user)
+    base_filter = (
+        (Q(author__in=following_ids) & Q(moderation_status=Post.MODERATION_APPROVED))
+        | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
+    )
 
     posts = (
         Post.objects
@@ -51,6 +54,7 @@ def feed_view(request):
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
         post.can_delete_now = post.can_edit(request.user)
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(
