@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import PostForm, PostEditForm
 from .models import Post
-from .services.gemini_moderation import moderate_post, APPROVED, REJECTED, PENDING
+from .services.openai_moderation import moderate_post, APPROVED, REJECTED, PENDING
 from fittogether.utils import week_bounds
 
 

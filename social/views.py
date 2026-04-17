@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.contrib import messages
 
 from posts.models import Post
-from posts.services.gemini_moderation import moderate_post
+from posts.services.openai_moderation import moderate_post, APPROVED
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 from users.models import Profile
@@ -329,9 +329,9 @@ def add_comment(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
 
-    allowed, reason = moderate_post(content)
-    if not allowed:
-        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"})
+    status, reason = moderate_post(content)
+    if status != APPROVED:
+        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"}, status=400)
 
     comment = Comment.objects.create(
         user=request.user,
