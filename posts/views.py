@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .forms import PostForm, PostEditForm
 from .models import Post
-from .services.gemini_moderation import moderate_post, APPROVED, REJECTED, PENDING
+from .services.openai_moderation import moderate_post, APPROVED, REJECTED, PENDING
 from fittogether.utils import week_bounds
 
 
@@ -105,3 +106,19 @@ def edit_post(request, post_id):
 
     form = PostEditForm(instance=post)
     return render(request, "posts/edit_post.html", {"form": form, "post": post})
+
+
+@login_required
+@require_POST
+def delete_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+
+    if post.author != request.user:
+        return HttpResponseForbidden("You can only delete your own posts.")
+
+    if not post.can_edit(request.user):
+        return HttpResponseForbidden("You can only delete posts within 24 hours.")
+
+    post.delete()
+    messages.success(request, "Post deleted successfully.")
+    return redirect("social:feed")

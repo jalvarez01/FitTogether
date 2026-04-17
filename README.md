@@ -60,7 +60,7 @@ FitTogether
 │  ├─ models.py
 │  ├─ services
 │  │  ├─ __init__.py
-│  │  └─ gemini_moderation.py
+│  │  └─ openai_moderation.py
 │  ├─ signals.py
 │  ├─ templates
 │  │  └─ posts
@@ -162,6 +162,13 @@ With the virtual environment activated, install all project dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Create a `.env` file at the project root (or update your existing one) with:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL_TEXT=gpt-4o-mini
 ```
 
 This will install:

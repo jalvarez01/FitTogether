@@ -493,6 +493,38 @@
     opacity: .9;
     transform: translateY(-1px);
   }
+
+  .post-owner-actions {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .delete-post-form {
+    margin: 0;
+  }
+
+  .delete-post-btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #fff1f2;
+    border: 1px solid rgba(244,63,94,.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #9f1239;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .delete-post-btn:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+  }
 </style>
 
 {% if show_training_reminder_popup %}
@@ -541,10 +573,26 @@
               <div class="time">{{ post.created_at|date:"M d, H:i" }}</div>
             </div>
 
-            {% if post.can_edit_now %}
-              <a href="{% url 'posts:edit_post' post.id %}" class="edit-post-btn">
-                Edit
-              </a>
+            {% if post.can_edit_now or post.can_delete_now %}
+              <div class="post-owner-actions">
+                {% if post.can_edit_now %}
+                  <a href="{% url 'posts:edit_post' post.id %}" class="edit-post-btn">
+                    Edit
+                  </a>
+                {% endif %}
+
+                {% if post.can_delete_now %}
+                  <form class="delete-post-form" method="post" action="{% url 'posts:delete_post' post.id %}">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="delete-post-btn"
+                      onclick="return confirm('Are you sure you want to delete this post?')">
+                      Delete
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             {% endif %}
           </div>
 

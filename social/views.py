@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.contrib import messages
 
 from posts.models import Post
-from posts.services.gemini_moderation import moderate_post
+from posts.services.openai_moderation import moderate_post, APPROVED
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 from users.models import Profile
@@ -33,7 +33,10 @@ def feed_view(request):
         status="accepted",
     ).values_list("following_id", flat=True)
 
-    base_filter = Q(author__in=following_ids) | Q(author=request.user)
+    base_filter = (
+        (Q(author__in=following_ids) & Q(moderation_status=Post.MODERATION_APPROVED))
+        | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
+    )
 
     posts = (
         Post.objects
@@ -50,6 +53,8 @@ def feed_view(request):
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
         post.can_edit_now = post.can_edit(request.user)
+        post.can_delete_now = post.can_edit(request.user)
+        post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
     today = timezone.localdate()
     already_posted_today = Post.objects.filter(
@@ -275,12 +280,17 @@ def user_profile(request, username):
         status='pending'
     ).exists()
 
-    posts = Post.objects.filter(
-        author=profile_user
-    ).annotate(
-        likes_count=Count("like", distinct=True),
-        comments_count=Count("comment", distinct=True)
-    ).order_by("-created_at")
+    can_view_posts = (profile_user == request.user) or is_following
+
+    if can_view_posts:
+        posts = Post.objects.filter(
+            author=profile_user
+        ).annotate(
+            likes_count=Count("like", distinct=True),
+            comments_count=Count("comment", distinct=True)
+        ).order_by("-created_at")
+    else:
+        posts = Post.objects.none()
 
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
@@ -323,9 +333,9 @@ def add_comment(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
 
-    allowed, reason = moderate_post(content)
-    if not allowed:
-        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"})
+    status, reason = moderate_post(content)
+    if status != APPROVED:
+        return JsonResponse({"success": False, "error": f"Comment blocked: {reason}"}, status=400)
 
     comment = Comment.objects.create(
         user=request.user,
