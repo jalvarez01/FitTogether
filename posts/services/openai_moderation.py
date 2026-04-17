@@ -126,13 +126,14 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 20) -> Tupl
     )
 
     blocked_terms = [
+
     "nigga",
     "nigger",
     "porn",
     "xxx",
     "sex",
     "fuck you die"
-]
+    ]
 
     user_parts = []
     if text:
