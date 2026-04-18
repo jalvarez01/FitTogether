@@ -343,6 +343,9 @@ def add_comment(request, post_id):
         content=content
     )
 
+    profile = getattr(comment.user, 'profile', None)
+    profile_picture_url = profile.profile_picture.url if profile and profile.profile_picture else None
+
     return JsonResponse({
         'success': True,
         'comment': {
@@ -350,6 +353,7 @@ def add_comment(request, post_id):
             'username': comment.user.username,
             'content': comment.content,
             'created_at': comment.created_at.strftime("%b %d, %H:%M"),
+            'profile_picture_url': profile_picture_url,
         }
     })
 
@@ -408,12 +412,16 @@ def accept_friend_request(request, request_id):
         reverse_follow.save()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        follower_profile = getattr(friend_request.follower, 'profile', None)
+        follower_picture_url = follower_profile.profile_picture.url if follower_profile and follower_profile.profile_picture else None
+
         return JsonResponse({
             'success': True,
             'message': f"You are now friends with {friend_request.follower.username}",
             'friend_id': friend_request.follower.id,
             'friend_username': friend_request.follower.username,
             'friend_profile_url': f"/profile/{friend_request.follower.username}/",
+            'friend_profile_picture_url': follower_picture_url,
         })
 
     messages.success(request, f"You are now friends with {friend_request.follower.username}")

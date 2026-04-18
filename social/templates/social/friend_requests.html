@@ -142,7 +142,11 @@
         <div class="user-card">
           <div class="user-info">
             <a href="{% url 'social:user_profile' req.follower.username %}" class="user-avatar">
-              <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.follower.username }}">
+              {% if req.follower.profile.profile_picture %}
+                <img src="{{ req.follower.profile.profile_picture.url }}" alt="{{ req.follower.username }}">
+              {% else %}
+                <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.follower.username }}">
+              {% endif %}
             </a>
             <div class="user-details">
               <a href="{% url 'social:user_profile' req.follower.username %}" class="user-name">{{ req.follower.username }}</a>
@@ -176,7 +180,11 @@
           <div class="user-card">
             <div class="user-info">
               <a href="{% url 'social:user_profile' friend.following.username %}" class="user-avatar">
-                <img src="{% static 'images/profile_default.jpg' %}" alt="{{ friend.following.username }}">
+                {% if friend.following.profile.profile_picture %}
+                  <img src="{{ friend.following.profile.profile_picture.url }}" alt="{{ friend.following.username }}">
+                {% else %}
+                  <img src="{% static 'images/profile_default.jpg' %}" alt="{{ friend.following.username }}">
+                {% endif %}
               </a>
               <div class="user-details">
                 <a href="{% url 'social:user_profile' friend.following.username %}" class="user-name">{{ friend.following.username }}</a>
@@ -208,7 +216,11 @@
         <div class="user-card">
           <div class="user-info">
             <a href="{% url 'social:user_profile' req.following.username %}" class="user-avatar">
-              <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.following.username }}">
+              {% if req.following.profile.profile_picture %}
+                <img src="{{ req.following.profile.profile_picture.url }}" alt="{{ req.following.username }}">
+              {% else %}
+                <img src="{% static 'images/profile_default.jpg' %}" alt="{{ req.following.username }}">
+              {% endif %}
             </a>
             <div class="user-details">
               <a href="{% url 'social:user_profile' req.following.username %}" class="user-name">{{ req.following.username }}</a>
@@ -294,7 +306,7 @@ function acceptRequest(button) {
         const removeUrl = '/remove-friend/' + data.friend_id + '/';
         const profileUrl = data.friend_profile_url;
         const username = data.friend_username;
-        const imgSrc = "{% static 'images/profile_default.jpg' %}";
+        const imgSrc = data.friend_profile_picture_url || "{% static 'images/profile_default.jpg' %}";
 
         const newCard = document.createElement('div');
         newCard.className = 'user-card';
