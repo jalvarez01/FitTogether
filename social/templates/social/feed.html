@@ -756,11 +756,14 @@ function submitComment(postId) {
             const list = document.getElementById('comments-list-' + postId);
             const c = data.comment;
 
+            const defaultAvatar = "{% static 'images/profile_default.jpg' %}";
+            const avatarSrc = c.profile_picture_url || defaultAvatar;
+
             const item = document.createElement('div');
             item.className = 'comment-item';
             item.innerHTML = `
                 <div class="comment-avatar">
-                    <img src="{% static 'images/profile_default.jpg' %}" alt="">
+                    <img src="${avatarSrc}" alt="">
                 </div>
                 <div class="comment-bubble">
                     <div class="comment-author">${c.username}</div>
