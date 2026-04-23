@@ -1,11 +1,13 @@
 from pathlib import Path
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from dotenv import dotenv_values, load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+ENV_PATH = BASE_DIR / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
+ENV_VALUES = dotenv_values(ENV_PATH)
 
 
 # Quick-start development settings - unsuitable for production
@@ -37,13 +39,13 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'fittogether.urls'
@@ -131,5 +133,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ## OpenAI Moderation
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL_TEXT = os.getenv("OPENAI_MODEL_TEXT", "gpt-4o-mini")
+OPENAI_API_KEY = (ENV_VALUES.get("OPENAI_API_KEY", "") or "").strip()
+OPENAI_MODEL_TEXT = (ENV_VALUES.get("OPENAI_MODEL_TEXT", "gpt-4o-mini") or "gpt-4o-mini").strip()

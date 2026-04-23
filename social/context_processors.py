@@ -51,6 +51,7 @@ def streak_calendar(request):
     start_dt, end_dt = week_bounds(today)
     weekly_progress = Post.objects.filter(
         author=request.user,
+        moderation_status=Post.MODERATION_APPROVED,
         created_at__gte=start_dt,
         created_at__lt=end_dt
     ).count()

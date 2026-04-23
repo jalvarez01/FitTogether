@@ -1,94 +1,60 @@
-from datetime import timedelta
-
-from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from django.utils import timezone
 
 from posts.models import Post
-from users.models import WorkoutCompletion, WeekCompletion
+from users.services import rebuild_streak_state_for_user
 
 
-def _week_start(day):
-    """Return the Monday date for the week containing `day` (a date)."""
-    return day - timedelta(days=day.weekday())
+def _is_approved(status: str) -> bool:
+    return status == Post.MODERATION_APPROVED
+
+
+@receiver(pre_save, sender=Post)
+def capture_previous_post_state(sender, instance: Post, **kwargs):
+    if not instance.pk:
+        return
+
+    previous = (
+        Post.objects.filter(pk=instance.pk)
+        .values("author_id", "moderation_status")
+        .first()
+    )
+
+    instance._previous_author_id = previous["author_id"] if previous else None
+    instance._previous_moderation_status = previous["moderation_status"] if previous else None
 
 
 @receiver(post_save, sender=Post)
-def record_daily_workout_and_update_weekly_streak(sender, instance: Post, created: bool, **kwargs):
-    """Record workout completion on post creation and update WEEKLY streak.
-
-    Requirements:
-    - If the user makes a post on the feed, record the completion of the daily workout.
-    - After recording the completion, update the user's streak based on their training days.
-
-    FitTogether rule:
-    - weekly_training_days = N
-    - User can complete a "training week" when they post on N distinct days inside the same Mon→Sun week.
-    - Weekly streak counts consecutive *completed weeks*.
-    """
-
-    if not created:
+def sync_streaks_after_post_save(sender, instance: Post, created: bool, **kwargs):
+    if created:
+        if _is_approved(instance.moderation_status):
+            rebuild_streak_state_for_user(instance.author)
         return
 
-    workout_date = timezone.localdate(instance.created_at)
-    user = instance.author
+    previous_status = getattr(instance, "_previous_moderation_status", None)
+    previous_author_id = getattr(instance, "_previous_author_id", None)
 
-    with transaction.atomic():
-        # 1) Record daily workout completion (idempotent)
-        completion, was_created = WorkoutCompletion.objects.get_or_create(
-            user=user,
-            date=workout_date,
-        )
-        if not was_created:
-            return
+    author_changed = previous_author_id is not None and previous_author_id != instance.author_id
+    approval_relevant_change = previous_status != instance.moderation_status and (
+        _is_approved(previous_status) or _is_approved(instance.moderation_status)
+    )
 
-        profile = getattr(user, "profile", None)
-        if not profile:
-            return
+    if author_changed:
+        from django.contrib.auth.models import User
 
-        weekly_goal = int(getattr(profile, "weekly_training_days", 0) or 0)
-        if weekly_goal < 1:
-            return
+        previous_author = User.objects.filter(pk=previous_author_id).first()
+        if previous_author:
+            rebuild_streak_state_for_user(previous_author)
 
-        # 2) Check if the user has now completed the week
-        wk_start = _week_start(workout_date)
-        wk_end = wk_start + timedelta(days=7)
+        if _is_approved(instance.moderation_status):
+            rebuild_streak_state_for_user(instance.author)
+        return
 
-        workouts_this_week = WorkoutCompletion.objects.filter(
-            user=user,
-            date__gte=wk_start,
-            date__lt=wk_end,
-        ).count()
+    if approval_relevant_change:
+        rebuild_streak_state_for_user(instance.author)
 
-        if workouts_this_week < weekly_goal:
-            return
 
-        week_obj, week_created = WeekCompletion.objects.get_or_create(
-            user=user,
-            week_start=wk_start,
-        )
-        if not week_created:
-            return
-
-        # 3) Update weekly streak (consecutive completed weeks)
-        last_wk = profile.last_completed_week_start
-        if last_wk == wk_start:
-            return
-
-        if last_wk and wk_start == (last_wk + timedelta(days=7)):
-            profile.current_weekly_streak = (profile.current_weekly_streak or 0) + 1
-        else:
-            profile.current_weekly_streak = 1
-
-        profile.last_completed_week_start = wk_start
-        profile.longest_weekly_streak = max(
-            profile.longest_weekly_streak or 0,
-            profile.current_weekly_streak or 0,
-        )
-
-        profile.save(update_fields=[
-            "current_weekly_streak",
-            "longest_weekly_streak",
-            "last_completed_week_start",
-        ])
+@receiver(post_delete, sender=Post)
+def sync_streaks_after_post_delete(sender, instance: Post, **kwargs):
+    if _is_approved(instance.moderation_status):
+        rebuild_streak_state_for_user(instance.author)
