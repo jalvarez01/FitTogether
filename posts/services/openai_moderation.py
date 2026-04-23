@@ -110,30 +110,24 @@ def moderate_post(content: str, image_file=None, *, timeout_s: int = 20) -> Tupl
     if not text and not image_file:
         return REJECTED, USER_MSG_EMPTY
 
-    blocked_terms = ["melocoton"]
+    # No API key means no moderation decisions are made in-app.
+    if not api_key:
+        return _mark_pending("OPENAI_API_KEY not configured")
+
+    blocked_terms = ["nigga", "nigger", "porn", "xxx", "sex", "fuck you die"]
     for term in blocked_terms:
         if term in text.lower():
             return REJECTED, USER_MSG_BLOCKED_TERM
 
-    if not api_key:
-        return _mark_pending("OPENAI_API_KEY not configured")
-
     moderation_rules = (
-        f"Allow casual, sarcastic, or rude language. "
-        f"Block ONLY if post contains: {blocked_terms}, explicit sexual content, "
-        "extreme hate speech, or serious threats. "
-        "Return JSON: {\"allow\": true|false, \"reason\": \"short\"}."
-    )
-
-    blocked_terms = [
-
-    "nigga",
-    "nigger",
-    "porn",
-    "xxx",
-    "sex",
-    "fuck you die"
-    ]
+        "You are FitTogether Moderation. Decide if a post is allowed. "
+        "Hard rules (ALWAYS BLOCK): if text contains blocked terms (exact or obvious variants): "
+        f"{blocked_terms}. "
+        "Also BLOCK if content includes hate/harassment, sexual content involving minors, explicit sexual content, "
+        "self-harm instructions, illegal wrongdoing instructions, insults/profanity/abusive language directed at others. "
+        "Return JSON only with this schema: {\"allow\": true|false, \"reason\": \"short_reason\"}. "
+        "Keep reason under 60 chars."
+    )   
 
     user_parts = []
     if text:
