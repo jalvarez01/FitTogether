@@ -14,4 +14,8 @@ urlpatterns = [
     path("reject-request/<int:request_id>/", views.reject_friend_request, name="reject_friend_request"),
     path("remove-friend/<int:friend_id>/", views.remove_friend, name="remove_friend"),
     path("comment/<int:post_id>/", views.add_comment, name="add_comment"),  # 👈 NUEVA
+    path('messages/', views.messages_inbox, name='messages_inbox'),
+    path('messages/<str:username>/', views.conversation_view, name='conversation'),
+    path('messages/<str:username>/send/', views.send_message, name='send_message'),
+    path('messages/<str:username>/fetch/', views.fetch_messages, name='fetch_messages'),
 ]

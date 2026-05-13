@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block nav_messages_active %}is-active{% endblock %}
+{% block page_title %}Messages{% endblock %}
+
+{% block content %}
+<style>
+  .inbox-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inbox-header {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #030303;
+  }
+
+  .conversation-item {
+    background: #efeff1;
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #111827;
+    transition: background 0.15s;
+    border: 1px solid rgba(0,0,0,.04);
+  }
+  .conversation-item:hover { background: #e5e7eb; }
+
+  .conv-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #d1d5db;
+    flex-shrink: 0;
+  }
+  .conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .conv-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .conv-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .conv-name { font-weight: 700; font-size: 14px; }
+  .conv-time { font-size: 11px; color: #6b7280; flex-shrink: 0; }
+
+  .conv-preview {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .conv-preview.no-messages { font-style: italic; color: #9ca3af; }
+
+  .unread-badge {
+    background: #030303;
+    color: white;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+  }
+</style>
+
+<h2 class="inbox-header">Messages</h2>
+
+<div class="inbox-wrap">
+  {% for conv in conversations %}
+    <a href="{% url 'social:conversation' conv.friend.username %}" class="conversation-item">
+      <div class="conv-avatar">
+        {% if conv.friend.profile.profile_picture %}
+          <img src="{{ conv.friend.profile.profile_picture.url }}" alt="">
+        {% else %}
+          <img src="{% static 'images/profile_default.jpg' %}" alt="">
+        {% endif %}
+      </div>
+      <div class="conv-content">
+        <div class="conv-top">
+          <span class="conv-name">{{ conv.friend.username }}</span>
+          {% if conv.last_message %}
+            <span class="conv-time">{{ conv.last_message.created_at|date:"M d, H:i" }}</span>
+          {% endif %}
+        </div>
+        {% if conv.last_message %}
+          <div class="conv-preview">
+            {% if conv.last_message.sender == request.user %}You: {% endif %}{{ conv.last_message.content }}
+          </div>
+        {% else %}
+          <div class="conv-preview no-messages">No messages yet — say hi!</div>
+        {% endif %}
+      </div>
+      {% if conv.unread_count > 0 %}
+        <span class="unread-badge">{{ conv.unread_count }}</span>
+      {% endif %}
+    </a>
+  {% empty %}
+    <div class="empty-state">
+      <p>No friends yet.</p>
+      <a href="{% url 'social:search' %}" style="color: #3b82f6;">Find friends to chat with</a>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -14,7 +14,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Count, Q
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib import messages
@@ -24,6 +24,7 @@ from posts.services.openai_moderation import moderate_post, APPROVED
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 from users.models import Profile
+from .models import Follow, Like, Comment, Message
 
 
 @login_required(login_url="users:register")
@@ -467,3 +468,160 @@ def remove_friend(request, friend_id):
 
     messages.success(request, "Friend removed")
     return redirect('social:friend_requests')
+
+
+# MENSAJES PRIVADOS
+
+def _are_friends(user_a, user_b):
+    """True solo si ambos usuarios se siguen con status accepted."""
+    if user_a == user_b:
+        return False
+    forward = Follow.objects.filter(
+        follower=user_a, following=user_b, status='accepted'
+    ).exists()
+    backward = Follow.objects.filter(
+        follower=user_b, following=user_a, status='accepted'
+    ).exists()
+    return forward and backward
+
+
+@login_required
+def messages_inbox(request):
+    """Lista de conversaciones, ordenadas por mensaje más reciente."""
+    user = request.user
+
+    friends_follows = Follow.objects.filter(
+        follower=user, status='accepted'
+    ).select_related('following__profile')
+
+    conversations = []
+    for follow in friends_follows:
+        friend = follow.following
+        if not Follow.objects.filter(
+            follower=friend, following=user, status='accepted'
+        ).exists():
+            continue
+
+        last_message = Message.objects.filter(
+            Q(sender=user, recipient=friend) |
+            Q(sender=friend, recipient=user)
+        ).order_by('-created_at').first()
+
+        unread_count = Message.objects.filter(
+            sender=friend, recipient=user, is_read=False
+        ).count()
+
+        conversations.append({
+            'friend': friend,
+            'last_message': last_message,
+            'unread_count': unread_count,
+            'last_activity': last_message.created_at if last_message else None,
+        })
+
+    # Conversaciones con actividad primero, luego amigos sin mensajes
+    conversations.sort(
+        key=lambda c: (c['last_activity'] is None, -(c['last_activity'].timestamp() if c['last_activity'] else 0))
+    )
+
+    return render(request, 'social/messages_inbox.html', {
+        'conversations': conversations,
+    })
+
+
+@login_required
+def conversation_view(request, username):
+    other_user = get_object_or_404(User, username=username)
+
+    if not _are_friends(request.user, other_user):
+        return HttpResponseForbidden("You can only message friends.")
+
+    messages_qs = Message.objects.filter(
+        Q(sender=request.user, recipient=other_user) |
+        Q(sender=other_user, recipient=request.user)
+    ).select_related('sender').order_by('created_at')
+
+    # Marcar como leídos los mensajes recibidos
+    Message.objects.filter(
+        sender=other_user, recipient=request.user, is_read=False
+    ).update(is_read=True)
+
+    last_message_id = messages_qs.last().id if messages_qs.exists() else 0
+
+    return render(request, 'social/conversation.html', {
+        'other_user': other_user,
+        'messages_list': messages_qs,
+        'last_message_id': last_message_id,
+    })
+
+
+@login_required
+@require_POST
+def send_message(request, username):
+    other_user = get_object_or_404(User, username=username)
+
+    if not _are_friends(request.user, other_user):
+        return JsonResponse({'success': False, 'error': 'Not friends.'}, status=403)
+
+    content = (request.POST.get('content') or '').strip()
+    if not content:
+        return JsonResponse({'success': False, 'error': 'Message cannot be empty.'}, status=400)
+
+    if len(content) > 1000:
+        return JsonResponse({'success': False, 'error': 'Message too long (max 1000 characters).'}, status=400)
+
+    msg = Message.objects.create(
+        sender=request.user,
+        recipient=other_user,
+        content=content,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'content': msg.content,
+            'created_at': msg.created_at.strftime('%H:%M'),
+            'sender_username': msg.sender.username,
+            'is_mine': True,
+        }
+    })
+
+
+@login_required
+def fetch_messages(request, username):
+    """Endpoint de polling: retorna mensajes nuevos desde after_id."""
+    other_user = get_object_or_404(User, username=username)
+
+    if not _are_friends(request.user, other_user):
+        return JsonResponse({'success': False, 'error': 'Not friends.'}, status=403)
+
+    try:
+        after_id = int(request.GET.get('after_id', 0))
+    except (TypeError, ValueError):
+        after_id = 0
+
+    new_messages = Message.objects.filter(
+        Q(sender=request.user, recipient=other_user) |
+        Q(sender=other_user, recipient=request.user),
+        id__gt=after_id,
+    ).select_related('sender').order_by('created_at')
+
+    # Marcar como leídos los nuevos mensajes recibidos
+    Message.objects.filter(
+        sender=other_user, recipient=request.user, is_read=False,
+        id__gt=after_id,
+    ).update(is_read=True)
+
+    return JsonResponse({
+        'success': True,
+        'messages': [
+            {
+                'id': m.id,
+                'content': m.content,
+                'created_at': m.created_at.strftime('%H:%M'),
+                'sender_username': m.sender.username,
+                'is_mine': m.sender == request.user,
+            }
+            for m in new_messages
+        ]
+    })
