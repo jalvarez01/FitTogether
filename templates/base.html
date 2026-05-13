@@ -452,7 +452,7 @@
               Feed
             </a>
 
-            <a href="{% block nav_messages_url %}#{% endblock %}" class="{% block nav_messages_active %}{% endblock %}">
+            <a href="{% url 'social:messages_inbox' %}" class="{% block nav_messages_active %}{% endblock %}">
               <img class="icon icon-messages" src="{% static 'icons/messages.png' %}" alt="messages">
               Messages
               {% block nav_messages_badge %}{% endblock %}

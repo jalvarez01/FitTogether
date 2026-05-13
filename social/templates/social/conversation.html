@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block nav_messages_active %}is-active{% endblock %}
+{% block page_title %}{{ other_user.username }}{% endblock %}
+
+{% block content %}
+<style>
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0 14px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 12px;
+  }
+  .chat-header a.back { color: #030303; font-weight: 600; text-decoration: none; }
+  .chat-header .chat-avatar {
+    width: 38px; height: 38px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #d1d5db;
+    margin-left: 4px;
+  }
+  .chat-header .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .chat-header .chat-name { font-weight: 700; font-size: 15px; }
+
+  .messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 4px 12px;
+  }
+
+  .msg {
+    max-width: 70%;
+    padding: 8px 12px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .msg .ts { font-size: 10px; opacity: 0.6; margin-top: 3px; display: block; }
+
+  .msg.mine {
+    align-self: flex-end;
+    background: #030303;
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.theirs {
+    align-self: flex-start;
+    background: #eaf0ff;
+    color: #111827;
+    border-bottom-left-radius: 4px;
+  }
+
+  .empty-chat {
+    text-align: center;
+    color: #9ca3af;
+    padding: 30px 12px;
+    font-size: 13px;
+    font-style: italic;
+  }
+</style>
+
+<div class="chat-header">
+  <a href="{% url 'social:messages_inbox' %}" class="back">← Back</a>
+  <div class="chat-avatar">
+    {% if other_user.profile.profile_picture %}
+      <img src="{{ other_user.profile.profile_picture.url }}" alt="">
+    {% else %}
+      <img src="{% static 'images/profile_default.jpg' %}" alt="">
+    {% endif %}
+  </div>
+  <a href="{% url 'social:user_profile' other_user.username %}" style="text-decoration:none; color:inherit;">
+    <span class="chat-name">{{ other_user.username }}</span>
+  </a>
+</div>
+
+<div class="messages-list" id="messages-list" data-last-id="{{ last_message_id }}">
+  {% for msg in messages_list %}
+    <div class="msg {% if msg.sender == request.user %}mine{% else %}theirs{% endif %}" data-id="{{ msg.id }}">
+      {{ msg.content }}
+      <span class="ts">{{ msg.created_at|date:"H:i" }}</span>
+    </div>
+  {% empty %}
+    <div class="empty-chat" id="empty-state">No messages yet. Send the first one below!</div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block main_bottom %}
+<style>
+  .chat-composer {
+    background: #efeff1;
+    border-radius: 18px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border: 1px solid rgba(0,0,0,.06);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .chat-composer input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 8px 12px;
+    background: white;
+    outline: none;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .chat-composer input:focus { border-color: #a8a9b1; }
+  .chat-composer button {
+    background: #030303;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 0 16px;
+    height: 32px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .chat-composer button:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+
+<form class="chat-composer" id="chat-form" autocomplete="off">
+  {% csrf_token %}
+  <input type="text" name="content" id="msg-input" placeholder="Type a message..." maxlength="1000" required>
+  <button type="submit" id="msg-send">Send</button>
+</form>
+
+<script>
+(function() {
+  const sendUrl = "{% url 'social:send_message' other_user.username %}";
+  const fetchUrl = "{% url 'social:fetch_messages' other_user.username %}";
+  const currentUser = "{{ request.user.username }}";
+
+  const listEl = document.getElementById('messages-list');
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('msg-send');
+
+  function csrftoken() {
+    const c = document.cookie.split(';').map(s => s.trim()).find(s => s.startsWith('csrftoken='));
+    return c ? c.split('=')[1] : '';
+  }
+
+  function scrollToBottom() {
+    const scroller = document.querySelector('.main-scroll') || document.documentElement;
+    scroller.scrollTop = scroller.scrollHeight;
+  }
+
+  function renderMessage(m) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.is_mine ? 'mine' : 'theirs');
+    div.setAttribute('data-id', m.id);
+    div.textContent = m.content;
+    const ts = document.createElement('span');
+    ts.className = 'ts';
+    ts.textContent = m.created_at;
+    div.appendChild(ts);
+    listEl.appendChild(div);
+
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.remove();
+  }
+
+  function lastId() {
+    const items = listEl.querySelectorAll('.msg');
+    if (!items.length) return 0;
+    return parseInt(items[items.length - 1].getAttribute('data-id'), 10) || 0;
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const content = input.value.trim();
+    if (!content) return;
+
+    sendBtn.disabled = true;
+    const fd = new FormData();
+    fd.append('content', content);
+
+    fetch(sendUrl, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrftoken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        renderMessage(data.message);
+        input.value = '';
+        scrollToBottom();
+      } else {
+        alert(data.error || 'Could not send message.');
+      }
+    })
+    .catch(() => alert('Network error.'))
+    .finally(() => { sendBtn.disabled = false; input.focus(); });
+  });
+
+  function poll() {
+    fetch(`${fetchUrl}?after_id=${lastId()}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.messages.length) {
+        const wasAtBottom = (() => {
+          const scroller = document.querySelector('.main-scroll') || document.documentElement;
+          return (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight) < 100;
+        })();
+        data.messages.forEach(renderMessage);
+        if (wasAtBottom) scrollToBottom();
+      }
+    })
+    .catch(() => {});
+  }
+
+  scrollToBottom();
+  setInterval(poll, 3000);
+  input.focus();
+})();
+</script>
+{% endblock %}
