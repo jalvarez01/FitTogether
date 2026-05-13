@@ -17,7 +17,7 @@ SECRET_KEY = os.getenv("SECRET_KEY") or "django-insecure-CHANGE-ME-IN-PRODUCTION
 
 DEBUG = (os.getenv("DEBUG") or "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = (os.getenv("ALLOWED_HOSTS") or "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = (os.getenv("ALLOWED_HOSTS") or "localhost,127.0.0.1,3.88.16.224,3.884.131.179,54.82.238.50").split(",")
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
