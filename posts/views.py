@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import PostForm, PostEditForm
 from .models import Post
-from .services.openai_moderation import moderate_post, APPROVED, REJECTED, PENDING
+from .services.openai_moderation import moderate_post, REJECTED, PENDING
 from fittogether.utils import week_bounds
 
 
@@ -39,12 +39,16 @@ def create_post(request):
 
     form = PostForm(request.POST, request.FILES)
     if not form.is_valid():
-        messages.error(request, "Could not create the post. Please check the form and try again.")
+        error_text = " ".join([str(error) for error in form.non_field_errors()])
+        messages.error(request, error_text or "Could not create the post. Please check the form and try again.")
         return redirect("social:feed")
 
     content = (form.cleaned_data.get("content") or "").strip()
     image = form.cleaned_data.get("image")
+    video = form.cleaned_data.get("video")
 
+    # Existing AI moderation can evaluate text and images. Video uploads are still passed through
+    # the same moderation workflow via text metadata/caption, while the file is validated separately.
     status, reason = moderate_post(content, image)
 
     if status == REJECTED:
@@ -53,7 +57,9 @@ def create_post(request):
 
     post = form.save(commit=False)
     post.author = request.user
-    post.moderation_status = status  # "approved" o "pending"
+    post.moderation_status = status
+    if video:
+        post.video_duration = form.cleaned_data.get("video_duration")
     post.save()
 
     if status == PENDING:
@@ -85,7 +91,8 @@ def edit_post(request, post_id):
             return redirect("posts:edit_post", post_id=post.id)
 
         content = (form.cleaned_data.get("content") or "").strip()
-        image = form.cleaned_data.get("image")
+        image = form.cleaned_data.get("image") or (None if form.cleaned_data.get("remove_image") else post.image)
+        video = form.cleaned_data.get("video")
 
         status, reason = moderate_post(content, image)
 
@@ -95,6 +102,8 @@ def edit_post(request, post_id):
 
         post = form.save(commit=False)
         post.moderation_status = status
+        if video:
+            post.video_duration = form.cleaned_data.get("video_duration")
         post.save()
 
         if status == PENDING:
