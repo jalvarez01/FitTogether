@@ -154,6 +154,21 @@
         {% endif %}
       </div>
 
+      <div class="edit-field">
+        <label class="edit-label">Video (max 30 seconds)</label>
+        {{ form.video.as_widget|safe }}
+
+        {% if post.video %}
+          <div class="edit-hint">Current video: {{ post.video.name }}</div>
+        {% endif %}
+
+        {% if form.remove_video %}
+          <label class="remove-image">
+            {{ form.remove_video }} Remove current video
+          </label>
+        {% endif %}
+      </div>
+
       <div class="edit-actions">
         <button class="btn-pill btn-primary" type="submit">Save</button>
         <a class="btn-pill btn-secondary" href="{% url 'social:feed' %}">Cancel</a>
@@ -175,7 +190,9 @@
 
     const file = document.querySelector('input[type="file"][name="image"]');
     if (file) file.classList.add('edit-file');
+
+    const video = document.querySelector('input[type="file"][name="video"]');
+    if (video) video.classList.add('edit-file');
   })();
 </script>
 {% endblock %}
-
