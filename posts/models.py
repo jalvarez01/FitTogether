@@ -18,6 +18,8 @@ class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
     content = models.TextField(blank=True)
     image = models.ImageField(upload_to="posts/", blank=True, null=True)
+    video = models.FileField(upload_to="posts/videos/", blank=True, null=True)
+    video_duration = models.FloatField(blank=True, null=True)
     moderation_status = models.CharField(
         max_length=10,
         choices=MODERATION_CHOICES,
@@ -27,6 +29,14 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.author.username} - {self.created_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def has_video(self):
+        return bool(self.video)
+
+    @property
+    def has_image(self):
+        return bool(self.image)
 
     def can_edit(self, user):
         """

@@ -39,17 +39,50 @@ def feed_view(request):
         | (Q(author=request.user) & Q(moderation_status__in=[Post.MODERATION_APPROVED, Post.MODERATION_PENDING]))
     )
 
+    current_sort = request.GET.get("sort", "latest")
+    current_date = request.GET.get("date", "all")
+
     posts = (
         Post.objects
         .filter(base_filter)
-        .select_related("author")
+        .select_related("author", "author__profile")
         .prefetch_related("like_set", "comment_set__user")
         .annotate(
             likes_count=Count("like", distinct=True),
             comments_count=Count("comment", distinct=True),
+            interactions_count=Count("like", distinct=True) + Count("comment", distinct=True),
         )
-        .order_by("-created_at")
     )
+
+    today = timezone.localdate()
+
+    if current_date == "today":
+        posts = posts.filter(created_at__date=today)
+
+    elif current_date == "week":
+        start_dt, end_dt = week_bounds(today)
+        posts = posts.filter(created_at__gte=start_dt, created_at__lt=end_dt)
+
+    elif current_date == "month":
+        posts = posts.filter(
+            created_at__year=today.year,
+            created_at__month=today.month,
+        )
+
+    if current_sort == "oldest":
+        posts = posts.order_by("created_at")
+
+    elif current_sort == "liked":
+        posts = posts.order_by("-likes_count", "-created_at")
+
+    elif current_sort == "commented":
+        posts = posts.order_by("-comments_count", "-created_at")
+
+    elif current_sort == "interactions":
+        posts = posts.order_by("-interactions_count", "-created_at")
+
+    else:
+        posts = posts.order_by("-created_at")
 
     for post in posts:
         post.user_has_liked = post.like_set.filter(user=request.user).exists()
@@ -57,7 +90,6 @@ def feed_view(request):
         post.can_delete_now = post.can_edit(request.user)
         post.is_pending = (post.moderation_status == Post.MODERATION_PENDING)
 
-    today = timezone.localdate()
     already_posted_today = Post.objects.filter(
         author=request.user,
         created_at__date=today,
@@ -103,6 +135,8 @@ def feed_view(request):
         "already_posted_today": already_posted_today,
         "show_training_reminder_popup": show_training_reminder_popup,
         "training_reminder_day_label": today_label,
+        "current_sort": current_sort,
+        "current_date": current_date,
     }
 
     return render(request, "social/feed.html", ctx)

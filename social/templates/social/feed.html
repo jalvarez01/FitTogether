@@ -420,6 +420,12 @@
     gap: 12px;
   }
 
+  .composer-media-actions{
+    display:flex;
+    align-items:center;
+    gap: 16px;
+  }
+
   .add-image{
     display:inline-flex;
     align-items:center;
@@ -525,6 +531,117 @@
     opacity: .9;
     transform: translateY(-1px);
   }
+
+  .feed-filter-card{
+    background: linear-gradient(135deg, #f7f9ff, #fff3fb);
+    border: 1px solid rgba(17,24,39,.06);
+    border-radius: 18px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .035);
+  }
+
+  .feed-filter-form{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .filter-group{
+    flex: 1;
+  }
+
+  .filter-select{
+    width: 100%;
+    height: 38px;
+    border: 1px solid rgba(17,24,39,.08);
+    border-radius: 999px;
+    background: rgba(255,255,255,.82);
+    color: #374151;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .filter-select:focus{
+    border-color: #c7d2fe;
+    box-shadow: 0 0 0 3px rgba(199,210,254,.35);
+  }
+
+  .filter-soft-btn{
+    height: 38px;
+    padding: 0 15px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,.06);
+    background: #fde9fb;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .18s ease;
+    white-space: nowrap;
+  }
+
+  .filter-soft-btn:hover{
+    background: #f1eaff;
+    transform: translateY(-1px);
+  }
+
+  .filter-reset{
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,.06);
+    background: #eaf0ff;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .filter-reset:hover{
+    background: #eaf9ee;
+  }
+
+  .video-row{
+    margin-bottom: 12px;
+  }
+
+  .video-ph{
+    width: 100%;
+    max-height: 280px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.55);
+    overflow: hidden;
+  }
+
+  .video-ph video{
+    width: 100%;
+    max-height: 280px;
+    display: block;
+    object-fit: cover;
+    background: #000;
+  }
+
+  .video-duration{
+    display: inline-flex;
+    margin-top: 8px;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,.7);
+    border: 1px solid rgba(0,0,0,.06);
+    font-size: 11px;
+    font-weight: 700;
+    color: #374151;
+  }
+
 </style>
 
 {% if show_training_reminder_popup %}
@@ -541,6 +658,35 @@
     </div>
   </div>
 {% endif %}
+
+<div class="feed-filter-card">
+  <form method="get" class="feed-filter-form">
+
+    <div class="filter-group">
+      <select name="sort" class="filter-select">
+        <option value="latest" {% if current_sort == "latest" or not current_sort %}selected{% endif %}>Latest posts</option>
+        <option value="oldest" {% if current_sort == "oldest" %}selected{% endif %}>Oldest posts</option>
+        <option value="liked" {% if current_sort == "liked" %}selected{% endif %}>Most liked</option>
+        <option value="commented" {% if current_sort == "commented" %}selected{% endif %}>Most commented</option>
+        <option value="interactions" {% if current_sort == "interactions" %}selected{% endif %}>Most interactions</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <select name="date" class="filter-select">
+        <option value="all" {% if current_date == "all" or not current_date %}selected{% endif %}>All dates</option>
+        <option value="today" {% if current_date == "today" %}selected{% endif %}>Today</option>
+        <option value="week" {% if current_date == "week" %}selected{% endif %}>This week</option>
+        <option value="month" {% if current_date == "month" %}selected{% endif %}>This month</option>
+      </select>
+    </div>
+
+    <button type="submit" class="filter-soft-btn">Filter</button>
+
+    <a href="{% url 'social:feed' %}" class="filter-reset">Reset</a>
+
+  </form>
+</div>
 
 <div class="search-bar">
   <form action="{% url 'social:search' %}" method="get">
@@ -600,7 +746,19 @@
             <p class="post-text">{{ post.content }}</p>
           {% endif %}
 
-          {% if post.image %}
+          {% if post.video %}
+            <div class="video-row">
+              <div class="video-ph">
+                <video controls preload="metadata">
+                  <source src="{{ post.video.url }}">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              {% if post.video_duration %}
+                <span class="video-duration">{{ post.video_duration|floatformat:1 }}s video</span>
+              {% endif %}
+            </div>
+          {% elif post.image %}
             <div class="images-row">
               <div class="img-ph" style="grid-column: 1 / -1; height: 180px;">
                 <img src="{{ post.image.url }}" alt="post image">
@@ -798,6 +956,7 @@ function escapeHtml(text) {
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
 }
+
 </script>
 
 {% endblock %}
@@ -843,11 +1002,19 @@ function escapeHtml(text) {
     </div>
 
     <div class="composer-bottom">
-      <label class="add-image">
-        <img src="{% static 'icons/image.png' %}" alt="">
-        Image
-        <input type="file" name="image" hidden {% if not can_post %}disabled{% endif %}>
-      </label>
+      <div class="composer-media-actions">
+        <label class="add-image">
+          <img src="{% static 'icons/image.png' %}" alt="">
+          Image
+          <input type="file" name="image" hidden {% if not can_post %}disabled{% endif %}>
+        </label>
+
+        <label class="add-image">
+          🎥
+          Video ≤ 30s
+          <input type="file" name="video" accept="video/*" hidden {% if not can_post %}disabled{% endif %}>
+        </label>
+      </div>
 
       <button class="send-btn" type="submit" {% if not can_post %}disabled{% endif %}>
         {% if can_post %}Send{% else %}Locked{% endif %}
