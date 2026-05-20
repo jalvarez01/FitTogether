@@ -716,7 +716,7 @@
               <a href="{% url 'social:user_profile' post.author.username %}" class="name">
                 {{ post.author.username }}
               </a>
-              <div class="time">{{ post.created_at|date:"M d, H:i" }}</div>
+              <div class="time" data-utc="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M d, H:i" }}</div>
             </div>
 
             {% if post.can_edit_now or post.can_delete_now %}
@@ -808,7 +808,7 @@
                   <div class="comment-bubble">
                     <div class="comment-author">{{ comment.user.username }}</div>
                     <div class="comment-text">{{ comment.content }}</div>
-                    <div class="comment-time">{{ comment.created_at|date:"M d, H:i" }}</div>
+                    <div class="comment-time" data-utc="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"M d, H:i" }}</div>
                   </div>
                 </div>
               {% endfor %}
@@ -900,6 +900,11 @@ function submitComment(postId) {
     const content = input.value.trim();
     if (!content) return;
 
+    // Prevenir doble envío deshabilitando mientras se procesa
+    input.disabled = true;
+    const btn = input.closest('.comment-form').querySelector('button');
+    if (btn) btn.disabled = true;
+
     fetch(`/comment/${postId}/`, {
         method: 'POST',
         headers: {
@@ -926,7 +931,7 @@ function submitComment(postId) {
                 <div class="comment-bubble">
                     <div class="comment-author">${c.username}</div>
                     <div class="comment-text">${escapeHtml(c.content)}</div>
-                    <div class="comment-time">${c.created_at}</div>
+                    <div class="comment-time" data-utc="${c.created_at_iso || ''}">${c.created_at_iso ? ftFormatDateTime(c.created_at_iso) : c.created_at}</div>
                 </div>
             `;
             list.appendChild(item);
@@ -941,11 +946,17 @@ function submitComment(postId) {
             alert(data.error || 'No se pudo enviar el comentario.');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => console.error('Error:', error))
+    .finally(() => {
+        input.disabled = false;
+        if (btn) btn.disabled = false;
+        input.focus();
+    });
 }
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && e.target.matches('.comment-form input')) {
+        e.preventDefault();
         const postId = e.target.id.replace('comment-input-', '');
         submitComment(parseInt(postId));
     }
@@ -956,6 +967,37 @@ function escapeHtml(text) {
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
 }
+
+// Scroll suave al post destacado si viene ?highlight=<post_id> desde una notificación
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get('highlight');
+    if (!highlightId) return;
+
+    const article = document.querySelector('article[data-post-id="' + highlightId + '"]');
+    if (!article) return;
+
+    // Scroll dentro del contenedor .main-scroll
+    const scrollContainer = document.querySelector('.main-scroll');
+    if (scrollContainer) {
+        // Pequeño delay para que el layout esté listo
+        setTimeout(function() {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const articleRect = article.getBoundingClientRect();
+            const offset = articleRect.top - containerRect.top + scrollContainer.scrollTop - 16;
+            scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+
+            // Resaltar brevemente el post
+            article.style.transition = 'box-shadow 0.4s ease, outline 0.4s ease';
+            article.style.outline = '2px solid rgba(3,3,3,0.35)';
+            article.style.outlineOffset = '2px';
+            setTimeout(function() {
+                article.style.outline = '';
+                article.style.outlineOffset = '';
+            }, 2200);
+        }, 120);
+    }
+})();
 
 </script>
 

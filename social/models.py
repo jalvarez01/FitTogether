@@ -86,7 +86,9 @@ class Message(models.Model):
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_read = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['created_at']
@@ -97,3 +99,45 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} → {self.recipient.username}: {self.content[:30]}"
+
+
+class Notification(models.Model):
+    TYPE_POST = 'post'
+    TYPE_LIKE = 'like'
+    TYPE_COMMENT = 'comment'
+
+    TYPE_CHOICES = [
+        (TYPE_POST, 'Friend created a post'),
+        (TYPE_LIKE, 'Friend liked your post'),
+        (TYPE_COMMENT, 'Friend commented on your post'),
+    ]
+
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='triggered_notifications'
+    )
+    notif_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    post = models.ForeignKey(
+        'posts.Post',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read'], name='social_notif_recip_idx'),
+        ]
+
+    def __str__(self):
+        return f"Notif({self.notif_type}) → {self.recipient.username} from {self.actor.username}"

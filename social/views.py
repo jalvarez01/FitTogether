@@ -24,7 +24,7 @@ from posts.services.openai_moderation import moderate_post, APPROVED
 from .models import Follow, Like, Comment
 from fittogether.utils import week_bounds
 from users.models import Profile
-from .models import Follow, Like, Comment, Message
+from .models import Follow, Like, Comment, Message, Notification
 
 
 @login_required(login_url="users:register")
@@ -655,7 +655,81 @@ def fetch_messages(request, username):
                 'created_at': m.created_at.strftime('%H:%M'),
                 'sender_username': m.sender.username,
                 'is_mine': m.sender == request.user,
+                'is_edited': m.is_edited,
             }
             for m in new_messages
         ]
     })
+
+
+@login_required
+@require_POST
+def edit_message(request, message_id):
+    """Permite al remitente editar el contenido de un mensaje propio."""
+    msg = get_object_or_404(Message, id=message_id, sender=request.user)
+
+    content = (request.POST.get('content') or '').strip()
+    if not content:
+        return JsonResponse({'success': False, 'error': 'Message cannot be empty.'}, status=400)
+
+    if len(content) > 1000:
+        return JsonResponse({'success': False, 'error': 'Message too long (max 1000 characters).'}, status=400)
+
+    msg.content = content
+    msg.is_edited = True
+    msg.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'content': msg.content,
+            'updated_at': msg.updated_at.strftime('%H:%M'),
+            'is_edited': msg.is_edited,
+        }
+    })
+
+
+@login_required
+def notifications_list(request):
+    """Retorna las notificaciones no leídas del usuario."""
+    notifs = Notification.objects.filter(
+        recipient=request.user
+    ).select_related('actor', 'actor__profile', 'post').order_by('-created_at')[:30]
+
+    data = []
+    for n in notifs:
+        actor_pic = None
+        actor_profile = getattr(n.actor, 'profile', None)
+        if actor_profile and actor_profile.profile_picture:
+            actor_pic = actor_profile.profile_picture.url
+
+        data.append({
+            'id': n.id,
+            'type': n.notif_type,
+            'actor': n.actor.username,
+            'actor_picture': actor_pic,
+            'post_id': n.post_id,
+            'is_read': n.is_read,
+            'created_at': n.created_at.strftime('%b %d, %H:%M'),
+        })
+
+    unread_count = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).count()
+
+    return JsonResponse({
+        'success': True,
+        'notifications': data,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+@require_POST
+def mark_notifications_read(request):
+    """Marca todas las notificaciones del usuario como leídas."""
+    Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).update(is_read=True)
+    return JsonResponse({'success': True})

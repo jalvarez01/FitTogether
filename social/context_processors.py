@@ -56,6 +56,13 @@ def streak_calendar(request):
         created_at__lt=end_dt
     ).count()
 
+    # Conteo de notificaciones no leídas (importación local para evitar import circular)
+    from social.models import Notification
+    unread_notifications_count = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False,
+    ).count()
+
     return {
         "calendar_weeks": weeks,
         "calendar_month_label": calendar.month_name[month],
@@ -71,4 +78,5 @@ def streak_calendar(request):
         "longest_weekly_streak": longest_weekly_streak,
         "weekly_progress": weekly_progress,
         "weekly_goal": weekly_goal,
+        "unread_notifications_count": unread_notifications_count,
     }

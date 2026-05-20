@@ -56,6 +56,59 @@
     border-bottom-left-radius: 4px;
   }
 
+  /* Edicion de mensaje */
+  .msg-wrap { display: flex; flex-direction: column; }
+  .msg-wrap.mine { align-items: flex-end; }
+  .msg-wrap.theirs { align-items: flex-start; }
+  .msg-actions {
+    display: none;
+    gap: 6px;
+    margin-top: 3px;
+  }
+  .msg-wrap.mine:hover .msg-actions { display: flex; }
+  .msg-actions button {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+  }
+  .msg-actions button:hover { color: #030303; }
+  .msg-edit-form {
+    display: none;
+    align-self: flex-end;
+    gap: 6px;
+    margin-top: 4px;
+    width: 100%;
+    max-width: 70%;
+    align-items: center;
+  }
+  .msg-edit-form input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+  }
+  .msg-edit-form input:focus { border-color: #a8a9b1; }
+  .msg-edit-form button {
+    background: #030303;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .msg-edit-form .btn-cancel {
+    background: #e5e7eb;
+    color: #030303;
+  }
+
   .empty-chat {
     text-align: center;
     color: #9ca3af;
@@ -81,9 +134,21 @@
 
 <div class="messages-list" id="messages-list" data-last-id="{{ last_message_id }}">
   {% for msg in messages_list %}
-    <div class="msg {% if msg.sender == request.user %}mine{% else %}theirs{% endif %}" data-id="{{ msg.id }}">
-      {{ msg.content }}
-      <span class="ts">{{ msg.created_at|date:"H:i" }}</span>
+    <div class="msg-wrap {% if msg.sender == request.user %}mine{% else %}theirs{% endif %}" data-id="{{ msg.id }}">
+      <div class="msg {% if msg.sender == request.user %}mine{% else %}theirs{% endif %}">
+        <span class="msg-content">{{ msg.content }}</span>
+        <span class="ts">{{ msg.created_at|date:"H:i" }}{% if msg.is_edited %} · edited{% endif %}</span>
+      </div>
+      {% if msg.sender == request.user %}
+      <div class="msg-actions">
+        <button class="btn-edit-msg" data-id="{{ msg.id }}" data-content="{{ msg.content }}">Edit</button>
+      </div>
+      <div class="msg-edit-form" id="edit-form-{{ msg.id }}">
+        <input type="text" class="edit-input" maxlength="1000" value="{{ msg.content }}">
+        <button class="btn-save-edit" data-id="{{ msg.id }}">Save</button>
+        <button class="btn-cancel" data-id="{{ msg.id }}">Cancel</button>
+      </div>
+      {% endif %}
     </div>
   {% empty %}
     <div class="empty-chat" id="empty-state">No messages yet. Send the first one below!</div>
@@ -138,6 +203,7 @@
 (function() {
   const sendUrl = "{% url 'social:send_message' other_user.username %}";
   const fetchUrl = "{% url 'social:fetch_messages' other_user.username %}";
+  const editBaseUrl = "/messages/edit/";
   const currentUser = "{{ request.user.username }}";
 
   const listEl = document.getElementById('messages-list');
@@ -156,22 +222,68 @@
   }
 
   function renderMessage(m) {
+    // Wrapper que agrupa burbuja + acciones + formulario de edicion
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap ' + (m.is_mine ? 'mine' : 'theirs');
+    wrap.setAttribute('data-id', m.id);
+
     const div = document.createElement('div');
     div.className = 'msg ' + (m.is_mine ? 'mine' : 'theirs');
-    div.setAttribute('data-id', m.id);
-    div.textContent = m.content;
+
+    const contentSpan = document.createElement('span');
+    contentSpan.className = 'msg-content';
+    contentSpan.textContent = m.content;
+    div.appendChild(contentSpan);
+
     const ts = document.createElement('span');
     ts.className = 'ts';
-    ts.textContent = m.created_at;
+    ts.textContent = m.created_at + (m.is_edited ? ' · edited' : '');
     div.appendChild(ts);
-    listEl.appendChild(div);
+    wrap.appendChild(div);
+
+    if (m.is_mine) {
+      // Boton editar
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-edit-msg';
+      editBtn.setAttribute('data-id', m.id);
+      editBtn.setAttribute('data-content', m.content);
+      editBtn.textContent = 'Edit';
+      actions.appendChild(editBtn);
+      wrap.appendChild(actions);
+
+      // Formulario de edicion inline
+      const editForm = document.createElement('div');
+      editForm.className = 'msg-edit-form';
+      editForm.id = 'edit-form-' + m.id;
+      const editInput = document.createElement('input');
+      editInput.type = 'text';
+      editInput.className = 'edit-input';
+      editInput.maxLength = 1000;
+      editInput.value = m.content;
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn-save-edit';
+      saveBtn.setAttribute('data-id', m.id);
+      saveBtn.textContent = 'Save';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn-cancel';
+      cancelBtn.setAttribute('data-id', m.id);
+      cancelBtn.textContent = 'Cancel';
+      editForm.appendChild(editInput);
+      editForm.appendChild(saveBtn);
+      editForm.appendChild(cancelBtn);
+      wrap.appendChild(editForm);
+    }
+
+    listEl.appendChild(wrap);
 
     const empty = document.getElementById('empty-state');
     if (empty) empty.remove();
   }
 
   function lastId() {
-    const items = listEl.querySelectorAll('.msg');
+    const items = listEl.querySelectorAll('.msg-wrap');
     if (!items.length) return 0;
     return parseInt(items[items.length - 1].getAttribute('data-id'), 10) || 0;
   }
@@ -221,6 +333,87 @@
     })
     .catch(() => {});
   }
+
+  // ---- Edicion de mensajes ----
+  function openEditForm(msgId, currentContent) {
+    const editForm = document.getElementById('edit-form-' + msgId);
+    if (!editForm) return;
+    const editInput = editForm.querySelector('.edit-input');
+    editInput.value = currentContent;
+    editForm.style.display = 'flex';
+    editInput.focus();
+  }
+
+  function closeEditForm(msgId) {
+    const editForm = document.getElementById('edit-form-' + msgId);
+    if (editForm) editForm.style.display = 'none';
+  }
+
+  function saveEdit(msgId) {
+    const editForm = document.getElementById('edit-form-' + msgId);
+    if (!editForm) return;
+    const editInput = editForm.querySelector('.edit-input');
+    const newContent = editInput.value.trim();
+    if (!newContent) return;
+
+    const fd = new FormData();
+    fd.append('content', newContent);
+
+    fetch('/messages/edit/' + msgId + '/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrftoken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        // Actualizar el contenido en el DOM
+        const wrap = listEl.querySelector('[data-id="' + msgId + '"]');
+        if (wrap) {
+          const contentSpan = wrap.querySelector('.msg-content');
+          const ts = wrap.querySelector('.ts');
+          if (contentSpan) contentSpan.textContent = data.message.content;
+          if (ts) ts.textContent = ts.textContent.replace(' · edited', '') + ' · edited';
+          // Actualizar el data-content del boton de edicion
+          const editBtn = wrap.querySelector('.btn-edit-msg');
+          if (editBtn) editBtn.setAttribute('data-content', data.message.content);
+        }
+        closeEditForm(msgId);
+      } else {
+        alert(data.error || 'Could not save edit.');
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
+  // Delegacion de eventos para los botones de edicion
+  listEl.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-edit-msg')) {
+      const msgId = e.target.getAttribute('data-id');
+      const currentContent = e.target.getAttribute('data-content');
+      openEditForm(msgId, currentContent);
+    }
+    if (e.target.classList.contains('btn-save-edit')) {
+      const msgId = e.target.getAttribute('data-id');
+      saveEdit(msgId);
+    }
+    if (e.target.classList.contains('btn-cancel') && e.target.closest('.msg-edit-form')) {
+      const msgId = e.target.getAttribute('data-id');
+      closeEditForm(msgId);
+    }
+  });
+
+  // Guardar con Enter en el campo de edicion
+  listEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.classList.contains('edit-input')) {
+      e.preventDefault();
+      const form = e.target.closest('.msg-edit-form');
+      if (form) {
+        const saveBtn = form.querySelector('.btn-save-edit');
+        if (saveBtn) saveEdit(saveBtn.getAttribute('data-id'));
+      }
+    }
+  });
 
   scrollToBottom();
   setInterval(poll, 3000);

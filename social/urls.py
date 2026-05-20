@@ -18,4 +18,7 @@ urlpatterns = [
     path('messages/<str:username>/', views.conversation_view, name='conversation'),
     path('messages/<str:username>/send/', views.send_message, name='send_message'),
     path('messages/<str:username>/fetch/', views.fetch_messages, name='fetch_messages'),
+    path('messages/edit/<int:message_id>/', views.edit_message, name='edit_message'),
+    path('notifications/', views.notifications_list, name='notifications_list'),
+    path('notifications/mark-read/', views.mark_notifications_read, name='mark_notifications_read'),
 ]
